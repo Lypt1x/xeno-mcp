@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/banner.jpg" alt="xeno-mcp banner" width="100%" />
+</p>
+
 # xeno-mcp
 
 An MCP server that lets AI agents interact with Roblox game clients through the [Xeno](https://xeno.onl) executor. Execute Lua scripts, capture game output, and manage client connections — all from your favorite AI tool.
