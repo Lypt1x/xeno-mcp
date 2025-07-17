@@ -4,7 +4,9 @@
 
 # xeno-mcp
 
-An MCP server that lets AI agents interact with Roblox game clients through the [Xeno](https://xeno.onl) executor. Execute Lua scripts, capture game output, and manage client connections — all from your favorite AI tool.
+An MCP server that lets AI agents interact with Roblox game clients through the [Xeno](https://xeno.now) executor. Execute Lua scripts, capture game output, and manage client connections — all from your favorite AI tool.
+
+> **What is Xeno?** — A free, keyless Roblox script executor with multi-attach support. Grab it at [xeno.now](https://xeno.now).
 
 ## How it works
 
@@ -20,6 +22,12 @@ Two components:
 The bridge auto-starts the HTTP server if it isn't already running.
 
 ## Setup
+
+### Prerequisites
+
+- [Xeno](https://xeno.now) — download and install the executor. It must be running before your AI agent can connect.
+- [Rust](https://rustup.rs) toolchain (for building the HTTP server)
+- [Node.js](https://nodejs.org) 18+ (for the MCP bridge)
 
 ### Build
 
