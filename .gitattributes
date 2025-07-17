@@ -1,0 +1,28 @@
+# Normalize line endings
+* text=auto
+
+# Rust
+*.rs text
+*.toml text
+Cargo.lock text
+
+# TypeScript / JavaScript
+*.ts text
+*.js text
+*.json text
+
+# Lua
+*.lua text
+*.tpl text
+
+# Markdown
+*.md text
+
+# Shell
+*.sh text eol=lf
+*.ps1 text eol=crlf
+
+# Binary
+*.exe binary
+*.dll binary
+*.wasm binary
