@@ -126,14 +126,24 @@ pub async fn get_logs(
     }
 
     let total = filtered.len();
-    let offset = query.offset.unwrap_or(0);
-    let limit = query.limit.unwrap_or(100).min(1000);
+    let limit = query.limit.unwrap_or(50).min(1000);
+    let offset = if let Some(p) = query.page {
+        let p = if p == 0 { 1 } else { p };
+        (p - 1) * limit
+    } else {
+        query.offset.unwrap_or(0)
+    };
+    let current_page = if limit > 0 { (offset / limit) + 1 } else { 1 };
+    let total_pages = if limit > 0 { (total + limit - 1) / limit } else { 1 };
     let page: Vec<&LogEntry> = filtered.into_iter().skip(offset).take(limit).collect();
+    let has_more = offset + page.len() < total;
 
     HttpResponse::Ok().json(serde_json::json!({
         "total": total,
-        "offset": offset,
-        "limit": limit,
+        "page": current_page,
+        "per_page": limit,
+        "total_pages": total_pages,
+        "has_more": has_more,
         "logs": page
     }))
 }

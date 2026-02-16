@@ -1,10 +1,12 @@
 use actix_web::{web, HttpRequest, HttpResponse};
+use chrono::Local;
 use std::collections::HashSet;
 use std::sync::Arc;
+use uuid::Uuid;
 
 use crate::logger::build_logger_lua;
-use crate::models::{AppState, AttachLoggerRequest, ExecuteRequest};
-use crate::routes::logs::check_secret;
+use crate::models::{AppState, AttachLoggerRequest, ExecuteRequest, LogEntry};
+use crate::routes::logs::{check_secret, store_entry};
 use crate::xeno::{xeno_execute, xeno_fetch_clients};
 
 pub async fn get_clients(state: web::Data<Arc<AppState>>) -> HttpResponse {
@@ -94,6 +96,31 @@ pub async fn post_execute(
 
     match xeno_execute(&state, &req_body.script, &req_body.pids).await {
         Ok(()) => {
+            // Log the executed script
+            let target_names: Vec<String> = req_body.pids.iter().map(|pid| {
+                clients.iter()
+                    .find(|c| c.pid.to_string() == *pid)
+                    .map(|c| format!("{}({})", c.username, c.pid))
+                    .unwrap_or_else(|| pid.clone())
+            }).collect();
+            let entry = LogEntry {
+                id: Uuid::new_v4().to_string(),
+                timestamp: Local::now(),
+                level: "script".to_string(),
+                message: req_body.script.clone(),
+                source: Some("execute_lua".to_string()),
+                pid: if req_body.pids.len() == 1 { req_body.pids[0].parse::<u64>().ok() } else { None },
+                username: if req_body.pids.len() == 1 {
+                    clients.iter().find(|c| c.pid.to_string() == req_body.pids[0]).map(|c| c.username.clone())
+                } else { None },
+                tags: {
+                    let mut t = vec!["script".to_string(), "executed".to_string()];
+                    for name in &target_names { t.push(name.clone()); }
+                    t
+                },
+            };
+            store_entry(&state, &entry);
+
             let logger_pids = state.logger_pids.read();
             let mut logger_status: Vec<serde_json::Value> = Vec::new();
             for pid in &req_body.pids {

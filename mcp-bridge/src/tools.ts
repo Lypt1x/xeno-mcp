@@ -206,19 +206,27 @@ CLIENT IDENTIFICATION:
 
   server.tool(
     "get_logs",
-    `Query captured Roblox output logs with optional filters. Returns logs from clients that have the logger attached. Logs include the message, level (info/warn/error), source, PID, username, timestamp, and tags.
+    `Query captured Roblox output logs with optional filters. Returns logs from clients that have the logger attached. Logs include the message, level (info/warn/error/output/script), source, PID, username, timestamp, and tags.
+
+Every executed script is automatically logged with level "script", so you can retrieve previously run scripts by filtering with level "script".
 
 IMPORTANT: Before calling this tool, ensure the logger is attached to the target client(s). If no logger is attached, you will get no logs. Ask the user whether to attach the logger first.
 
-Results are paginated (default limit: 100, max: 1000) and sorted newest-first by default.`,
+PAGINATION: Results are paginated with 50 logs per page by default (max: 1000). The response includes: total, page, per_page, total_pages, has_more.
+- Use the "page" parameter (1-indexed) to navigate pages. Page 1 is the first page.
+- Alternatively use "offset" for manual offset-based pagination.
+- Check "has_more" in the response to know if there are more pages.
+- Use "total_pages" to know the last page number.
+- Results are sorted newest-first by default.`,
     {
-      level: z.string().optional().describe("Filter by log level: 'info', 'warn', or 'error'"),
+      level: z.string().optional().describe("Filter by log level: 'info', 'warn', 'error', 'output', or 'script'"),
       source: z.string().optional().describe("Filter by source (substring match)"),
       search: z.string().optional().describe("Search log messages (substring match, case-insensitive)"),
       tag: z.string().optional().describe("Filter by tags (comma-separated)"),
       pid: z.string().optional().describe("Filter by client PID"),
-      limit: z.number().optional().describe("Max results to return (default: 100, max: 1000)"),
-      offset: z.number().optional().describe("Skip this many results (for pagination)"),
+      page: z.number().optional().describe("Page number (1-indexed). Default: 1. Use this for easy pagination."),
+      limit: z.number().optional().describe("Results per page (default: 50, max: 1000)"),
+      offset: z.number().optional().describe("Skip this many results (alternative to page-based pagination)"),
       order: z.string().optional().describe("Sort order: 'asc' (oldest first) or 'desc' (newest first, default)"),
       after: z.string().optional().describe("Only logs after this ISO 8601 timestamp"),
       before: z.string().optional().describe("Only logs before this ISO 8601 timestamp"),
@@ -231,6 +239,7 @@ Results are paginated (default limit: 100, max: 1000) and sorted newest-first by
         if (params.search) queryParams.search = params.search;
         if (params.tag) queryParams.tag = params.tag;
         if (params.pid) queryParams.pid = params.pid;
+        if (params.page !== undefined) queryParams.page = String(params.page);
         if (params.limit !== undefined) queryParams.limit = String(params.limit);
         if (params.offset !== undefined) queryParams.offset = String(params.offset);
         if (params.order) queryParams.order = params.order;

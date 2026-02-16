@@ -68,6 +68,25 @@ LOGGER:
 - Use get_logs to query captured logs with filters (level, source, search, tags, pid, time range)
 - The logger also sends in-game notifications to confirm attachment status
 
+LOG LEVELS:
+- "info" — internal events (logger attached/detached, system messages)
+- "output" — standard Roblox print() output
+- "warn" — Roblox warn() output
+- "error" — Roblox error() output
+- "script" — every executed script is automatically logged with this level; use level="script" to see executed scripts
+
+SCRIPT LOGGING:
+- Every script executed via execute_lua is automatically stored as a log entry with level "script"
+- This lets you review what scripts were run, when, and on which clients
+- Filter with level="script" in get_logs to see only executed scripts
+
+PAGINATION:
+- get_logs returns 50 logs per page by default (max 1000)
+- Use the "page" parameter (1-indexed) for easy page navigation: page=1 is the first page, page=2 is the second, etc.
+- The response includes: total (total matching logs), page (current page), per_page (items per page), total_pages, has_more (boolean)
+- Always check "has_more" to know if more pages exist; use "total_pages" to know the last page
+- You can also use "offset" for manual offset-based pagination instead of "page"
+
 WORKFLOW TIPS:
 1. Start by calling get_clients to see available Roblox clients and their status
 2. Attach the logger if you want to capture output: attach_logger with the PID(s)

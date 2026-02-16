@@ -61,6 +61,7 @@ pub struct LogQuery {
     pub before: Option<String>,
     pub limit: Option<usize>,
     pub offset: Option<usize>,
+    pub page: Option<usize>,
     pub order: Option<String>,
 }
 
