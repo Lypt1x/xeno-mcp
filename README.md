@@ -25,22 +25,43 @@ The bridge auto-starts the HTTP server if it isn't already running.
 
 ### Prerequisites
 
-- [Xeno](https://xeno.now) — download and install the executor. It must be running before your AI agent can connect.
-- [Rust](https://rustup.rs) toolchain (for building the HTTP server)
-- [Node.js](https://nodejs.org) 18+ (for the MCP bridge)
+- **Windows** — this project is built for Windows (the Rust server compiles to `.exe` and Xeno is Windows-only)
+- [Xeno](https://xeno.now) — the Roblox executor. Download, install, and have it running before you connect.
+- [Rust](https://rustup.rs) — install via `rustup`. This builds the HTTP server.
+- [Node.js](https://nodejs.org) 18+ — needed for the MCP bridge. Comes with `npm`.
+- [Git](https://git-scm.com) — to clone the repo.
 
 ### Build
 
-```bash
-# rust server
-cargo build --release
+Clone the repo and build both components:
 
-# mcp bridge
+```bash
+git clone https://github.com/Lypt1x/xeno-mcp.git
+cd xeno-mcp
+```
+
+**1. Build the Rust HTTP server**
+
+This compiles the server binary to `target/release/xeno-mcp.exe`:
+
+```bash
+cargo build --release
+```
+
+> First build pulls dependencies and takes a few minutes. Subsequent builds are fast.
+
+**2. Build the MCP bridge**
+
+Install Node dependencies and compile the TypeScript:
+
+```bash
 cd mcp-bridge
 npm install
 npm run build
 cd ..
 ```
+
+This produces the compiled bridge in `mcp-bridge/dist/`. You don't run it directly — your MCP client (Claude, Copilot, Cursor, etc.) launches it via the config below.
 
 ### Connect your AI agent
 
