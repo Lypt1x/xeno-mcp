@@ -1,6 +1,13 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { apiGet, apiPost, apiDelete } from "./api.js";
+import {
+  searchScripts,
+  fetchScripts,
+  getScriptDetails,
+  formatScriptList,
+  detectObfuscation,
+} from "./scriptblox.js";
 
 function text(content: string) {
   return { content: [{ type: "text" as const, text: content }] };
@@ -290,6 +297,245 @@ PAGINATION: Results are paginated with 50 logs per page by default (max: 1000). 
         return text(JSON.stringify(data, null, 2));
       } catch (e: any) {
         return text(formatCatchError(e));
+      }
+    }
+  );
+
+  // ── ScriptBlox Tools ───────────────────────────────────────────────────
+
+  server.tool(
+    "search_scripts",
+    `Search for Roblox scripts on ScriptBlox by keyword.
+
+Returns a paginated list of scripts (10 per page) with metadata: title, game, author, verified status, key system, views, likes, and ID.
+
+PRESENTATION RULES:
+- Present results as a numbered list to the user
+- Highlight verified scripts (✅) vs unverified scripts (⚠️)
+- Note scripts with key systems (🔑) — the user will need to obtain a key
+- Note patched scripts (❌) — these likely no longer work
+- Provide your analysis of which scripts look trustworthy based on: verified status, view count, like/dislike ratio, and whether they are patched
+- The user is always the authority — present information and let them decide
+
+PAGINATION: Use the "page" parameter to navigate. Response includes total_pages.`,
+    {
+      query: z.string().describe("Search keyword (e.g. 'aimbot', 'auto farm', 'blox fruits')"),
+      page: z.number().optional().describe("Page number (default: 1)"),
+      mode: z.string().optional().describe("'free' or 'paid'"),
+      verified: z.boolean().optional().describe("Filter to verified scripts only"),
+      key: z.boolean().optional().describe("Filter by key system (true = has key, false = no key)"),
+      universal: z.boolean().optional().describe("Filter to universal scripts only"),
+      sortBy: z.string().optional().describe("Sort by: 'views', 'likeCount', 'createdAt', 'updatedAt'"),
+      order: z.string().optional().describe("Sort order: 'asc' or 'desc' (default: 'desc')"),
+    },
+    async (params) => {
+      try {
+        const data = await searchScripts({
+          query: params.query,
+          page: params.page,
+          max: 10,
+          mode: params.mode,
+          verified: params.verified,
+          key: params.key,
+          universal: params.universal,
+          sortBy: params.sortBy,
+          order: params.order,
+        });
+
+        const scripts = data.result?.scripts ?? [];
+        const totalPages = data.result?.totalPages ?? 0;
+        const currentPage = params.page ?? 1;
+
+        const list = formatScriptList(scripts);
+        const pagination = `\nPage ${currentPage} of ${totalPages}${data.result?.nextPage ? ` | Next page: ${data.result.nextPage}` : " (last page)"}`;
+
+        return text(`**ScriptBlox Search: "${params.query}"**\n\n${list}${pagination}\n\nUse get_script_details with the script ID to inspect a script before executing.`);
+      } catch (e: any) {
+        return text(`ScriptBlox API error: ${e.message}`);
+      }
+    }
+  );
+
+  server.tool(
+    "browse_scripts",
+    `Browse trending, popular, or recent scripts on ScriptBlox (no keyword required).
+
+Returns a paginated list of scripts (10 per page) with the same metadata as search_scripts.
+
+Use sortBy to control what you see:
+- "views" — most viewed scripts
+- "likeCount" — most liked scripts
+- "createdAt" — newest scripts
+- "updatedAt" — recently updated scripts
+
+Same PRESENTATION RULES and safety awareness as search_scripts apply.`,
+    {
+      page: z.number().optional().describe("Page number (default: 1)"),
+      sortBy: z.string().optional().describe("Sort by: 'views', 'likeCount', 'createdAt', 'updatedAt'"),
+      order: z.string().optional().describe("Sort order: 'asc' or 'desc' (default: 'desc')"),
+      mode: z.string().optional().describe("'free' or 'paid'"),
+      verified: z.boolean().optional().describe("Filter to verified scripts only"),
+      key: z.boolean().optional().describe("Filter by key system"),
+      universal: z.boolean().optional().describe("Filter to universal scripts only"),
+      placeId: z.number().optional().describe("Filter by Roblox game place ID"),
+    },
+    async (params) => {
+      try {
+        const data = await fetchScripts({
+          page: params.page,
+          max: 10,
+          sortBy: params.sortBy,
+          order: params.order,
+          mode: params.mode,
+          verified: params.verified,
+          key: params.key,
+          universal: params.universal,
+          placeId: params.placeId,
+        });
+
+        const scripts = data.result?.scripts ?? [];
+        const totalPages = data.result?.totalPages ?? 0;
+        const currentPage = params.page ?? 1;
+
+        const list = formatScriptList(scripts);
+        const pagination = `\nPage ${currentPage} of ${totalPages}${data.result?.nextPage ? ` | Next page: ${data.result.nextPage}` : " (last page)"}`;
+
+        return text(`**ScriptBlox Browse**\n\n${list}${pagination}\n\nUse get_script_details with the script ID to inspect a script before executing.`);
+      } catch (e: any) {
+        return text(`ScriptBlox API error: ${e.message}`);
+      }
+    }
+  );
+
+  server.tool(
+    "get_script_details",
+    `Fetch full details and raw source code of a specific ScriptBlox script.
+
+Returns: title, game, author, description, verified status, key system info, view/like counts, and the raw script content.
+
+SAFETY RULES — YOU MUST FOLLOW THESE:
+1. If the script is NOT verified: You MUST tell the user it is unverified and ask if they want to proceed. Do NOT silently continue.
+2. If the script appears obfuscated (the response will tell you): WARN the user that the script content cannot be inspected for safety and suggest caution.
+3. If the script has a key system: INFORM the user that a key is required and they may need to visit an external link to get it.
+4. NEVER auto-execute a script from this tool. Always present the information and let the user decide.
+5. The user is ALWAYS the authority. Present your analysis and recommendations, then wait for their decision.`,
+    {
+      script_id: z.string().describe("The ScriptBlox script ID (the _id field from search/browse results)"),
+    },
+    async ({ script_id }) => {
+      try {
+        const { meta, rawScript } = await getScriptDetails(script_id);
+        const isObfuscated = rawScript ? detectObfuscation(rawScript) : false;
+
+        const warnings: string[] = [];
+        if (!meta.verified) warnings.push("⚠️ UNVERIFIED: This script has not been verified by ScriptBlox. Ask the user for confirmation before proceeding.");
+        if (isObfuscated) warnings.push("⚠️ OBFUSCATED: This script appears to be obfuscated. The code cannot be meaningfully inspected for safety. Advise the user to proceed with caution.");
+        if (meta.key) warnings.push(`🔑 KEY SYSTEM: This script requires a key. ${meta.keyLink ? `Key link: ${meta.keyLink}` : "The user will need to find the key source."}`);
+        if (meta.isPatched) warnings.push("❌ PATCHED: This script is marked as patched and may no longer work.");
+
+        const info = [
+          `**${meta.title}**`,
+          ``,
+          `Game: ${meta.game?.name ?? (meta.universal ? "Universal" : "Unknown")}`,
+          `Author: ${meta.owner?.username ?? "Unknown"}`,
+          `Verified: ${meta.verified ? "✅ Yes" : "⚠️ No"}`,
+          `Key System: ${meta.key ? "🔑 Yes" : "No"}`,
+          `Universal: ${meta.universal ? "Yes" : "No"}`,
+          `Patched: ${meta.isPatched ? "❌ Yes" : "No"}`,
+          `Views: ${meta.views} | Likes: ${meta.likeCount} | Dislikes: ${meta.dislikeCount}`,
+          `Created: ${meta.createdAt} | Updated: ${meta.updatedAt}`,
+          meta.description ? `\nDescription: ${meta.description}` : "",
+        ].filter(Boolean).join("\n");
+
+        const warningBlock = warnings.length > 0 ? `\n\n--- WARNINGS ---\n${warnings.join("\n")}` : "";
+        const scriptPreview = rawScript
+          ? `\n\n--- SCRIPT CONTENT (${rawScript.length} chars${isObfuscated ? ", OBFUSCATED" : ""}) ---\n${rawScript.length > 3000 ? rawScript.slice(0, 3000) + "\n... [truncated]" : rawScript}`
+          : "\n\n--- SCRIPT CONTENT ---\nUnable to retrieve raw script content.";
+
+        return text(`${info}${warningBlock}${scriptPreview}\n\nScript ID: ${meta._id}\nTo execute this script, use execute_scriptblox_script with this ID and target clients.`);
+      } catch (e: any) {
+        return text(`ScriptBlox API error: ${e.message}`);
+      }
+    }
+  );
+
+  server.tool(
+    "execute_scriptblox_script",
+    `Fetch a script from ScriptBlox and execute it on target Roblox clients.
+
+This is a convenience tool that combines get_script_details + execute_lua.
+
+CRITICAL SAFETY RULES:
+1. If the script is NOT verified: You MUST STOP and return the script details to the user. Ask them to confirm execution. Do NOT execute unverified scripts without explicit user approval.
+2. If the script is obfuscated: WARN the user before executing.
+3. If the script has a key system: INFORM the user they need a key.
+4. The user MUST have seen the script details (via get_script_details or from this tool's response) before you execute.
+5. The user is ALWAYS the final authority on whether to execute.
+
+WORKFLOW:
+- If unverified: return details + ask for confirmation → user says yes → call this tool again with confirmed=true
+- If verified: execute directly but still show warnings for obfuscation/key system`,
+    {
+      script_id: z.string().describe("The ScriptBlox script ID"),
+      clients: z.array(z.string()).describe('Client identifiers — use "Username(PID)" format from get_clients, or just username or PID.'),
+      confirmed: z.boolean().optional().describe("Set to true ONLY after the user has explicitly confirmed execution of an unverified script. Default: false."),
+    },
+    async ({ script_id, clients: identifiers, confirmed }) => {
+      try {
+        // Fetch script
+        const { meta, rawScript } = await getScriptDetails(script_id);
+
+        if (!rawScript) {
+          return text(`Failed to retrieve script content for "${meta.title}" (${script_id}). Cannot execute without script content.`);
+        }
+
+        const isObfuscated = detectObfuscation(rawScript);
+
+        // Safety gate: block unverified scripts unless user confirmed
+        if (!meta.verified && !confirmed) {
+          const warnings: string[] = ["⚠️ UNVERIFIED SCRIPT — EXECUTION BLOCKED"];
+          warnings.push(`This script "${meta.title}" is NOT verified by ScriptBlox.`);
+          warnings.push(`Author: ${meta.owner?.username ?? "Unknown"} | Views: ${meta.views} | Likes: ${meta.likeCount}`);
+          if (isObfuscated) warnings.push("⚠️ The script also appears to be OBFUSCATED and cannot be inspected.");
+          if (meta.key) warnings.push(`🔑 This script requires a key system.${meta.keyLink ? ` Key link: ${meta.keyLink}` : ""}`);
+          if (meta.isPatched) warnings.push("❌ This script is marked as PATCHED and may not work.");
+          warnings.push("");
+          warnings.push("Ask the user if they want to:");
+          warnings.push("1. View the script content first (use get_script_details)");
+          warnings.push("2. Execute anyway (call this tool again with confirmed=true)");
+          warnings.push("3. Cancel");
+          return text(warnings.join("\n"));
+        }
+
+        // Warnings for verified scripts
+        const notes: string[] = [];
+        if (isObfuscated) notes.push("⚠️ Note: This script appears obfuscated.");
+        if (meta.key) notes.push(`🔑 Note: This script uses a key system.${meta.keyLink ? ` Key link: ${meta.keyLink}` : ""}`);
+        if (meta.isPatched) notes.push("❌ Note: This script is marked as patched.");
+
+        // Resolve clients and execute
+        const allClients = await fetchClients();
+        const { pids, errors } = resolveIdentifiers(identifiers, allClients);
+
+        if (errors.length > 0) {
+          return text(`Error resolving clients:\n${errors.join("\n")}\n\nAvailable clients: ${allClients.map(c => c.label).join(", ") || "none"}`);
+        }
+
+        const data = await apiPost("/execute", { script: rawScript, pids });
+        if (!data.ok) return text(formatError(data));
+
+        const result = [
+          `✅ Executed "${meta.title}" on ${pids.length} client(s).`,
+          ...notes,
+          "",
+          JSON.stringify(data, null, 2),
+        ];
+        return text(result.join("\n"));
+      } catch (e: any) {
+        if (e.message?.includes("ECONNREFUSED") || e.message?.includes("fetch failed")) {
+          return text(formatCatchError(e));
+        }
+        return text(`Error: ${e.message}`);
       }
     }
   );
