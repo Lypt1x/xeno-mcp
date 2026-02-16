@@ -120,6 +120,10 @@ The MCP server exposes these tools to the AI agent:
 | `attach_logger` | Inject the log-forwarding script into clients |
 | `get_logs` | Query captured output with filters (level, search, time range, etc.) |
 | `clear_logs` | Wipe all stored logs |
+| `search_scripts` | Search community scripts on ScriptBlox by keyword |
+| `browse_scripts` | Browse trending, popular, or recent scripts on ScriptBlox |
+| `get_script_details` | Fetch full metadata and raw source code for a ScriptBlox script |
+| `execute_scriptblox_script` | Fetch a ScriptBlox script and execute it on connected clients |
 
 The agent can also read `xeno://clients` and `xeno://logs` as MCP resources.
 
@@ -134,7 +138,7 @@ If you want to hit the server directly (without MCP):
 | `POST` | `/execute` | Execute Lua (`{ "script": "...", "pids": ["123"] }`) |
 | `POST` | `/attach-logger` | Attach log script (`{ "pids": ["123"] }`) |
 | `POST` | `/internal` | Client → server event channel (used by the Lua script) |
-| `GET` | `/logs` | Query logs (supports `level`, `search`, `source`, `pid`, `limit`, `offset`, `after`, `before`, `tag`, `order`) |
+| `GET` | `/logs` | Query logs (supports `level`, `search`, `source`, `pid`, `page`, `limit`, `offset`, `after`, `before`, `tag`, `order`) |
 | `DELETE` | `/logs` | Clear logs |
 
 All mutating endpoints respect the `X-Xeno-Secret` header when `--secret` is set.
