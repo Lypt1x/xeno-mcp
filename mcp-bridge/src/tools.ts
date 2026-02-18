@@ -162,6 +162,39 @@ EXECUTION CONSTRAINTS:
 - Use request() for HTTP calls, NOT HttpService:RequestAsync
 - Wrap risky code in pcall() for error handling
 
+CRITICAL — NEVER BLOCK GAME TRAFFIC:
+- NEVER replace OnClientInvoke callbacks on RemoteFunctions — this WILL freeze the game
+- NEVER let a hook on __namecall, FireServer, or InvokeServer error without returning old(self, ...) — an unhandled error inside a hook drops the call and freezes gameplay
+- ALL logging inside hooks MUST be wrapped in pcall() so errors never prevent the original call from going through
+- Always call the original function unconditionally: wrap your logic in pcall, THEN return old(self, ...) or old(self, unpack(args)) — never skip calling old()
+- Hooks on __namecall must use safeClosure to match the closure type of the original — raw Lua closures can cause silent call drops on some executors
+- If hooking __namecall for remotes, prefer the dual-hook redirect pattern: hookfunction(FireServer) + hookmetamethod("__namecall") that redirects remote calls to the hookfunction'd version instead of calling old() directly — see .github/REMOTE_SPY_FINDINGS.md for the full pattern
+- Test hooks in isolation before combining — stacked/layered hooks compound failures
+
+STOPPABLE SCRIPTS — CLEANUP PATTERN:
+- Every long-running script (listeners, hooks, loops) MUST store a cleanup/disconnect function in getgenv() so it can be stopped later without rejoining
+- Use a unique key like getgenv().__MY_FEATURE and include a .Disconnect() or .Stop() method
+- Before injecting, check if already running: if getgenv().__MY_FEATURE then getgenv().__MY_FEATURE.Disconnect() end — this prevents stacking
+- For hookmetamethod: store the old metamethod and restore it on disconnect
+- For event connections: store all RBXScriptConnection objects and call :Disconnect() on each
+- For loops: use a flag (e.g. getgenv().__MY_FEATURE_RUNNING = true) and check it each iteration
+- Example pattern:
+  if getgenv().__SPY then getgenv().__SPY.Disconnect() end
+  local connections = {}
+  -- ... set up hooks/listeners, table.insert(connections, conn) ...
+  getgenv().__SPY = {
+    Disconnect = function()
+      for _, c in ipairs(connections) do pcall(function() c:Disconnect() end) end
+      -- restore hooks: hookmetamethod(game, "__namecall", oldNamecall)
+      getgenv().__SPY = nil
+      print("Stopped")
+    end
+  }
+
+VARARG GOTCHA IN LUAU:
+- Cannot use '...' inside pcall(function() ... end) — will cause a compile error
+- Capture args first: local args = {...} then use args inside pcall and unpack(args) when forwarding
+
 CLIENT IDENTIFICATION:
 - Pass clients as "Username(PID)" (e.g. "Lypt1x(35540)"), username, or PID
 - Prefer the "Username(PID)" format from get_clients
