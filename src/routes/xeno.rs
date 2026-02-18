@@ -338,7 +338,7 @@ pub async fn post_attach_logger(
 }
 
 pub async fn get_loader_script(state: web::Data<Arc<AppState>>) -> HttpResponse {
-    let lua = build_loader_lua(state.args.port, &state.args.secret, &state.args.exchange_dir);
+    let lua = build_loader_lua(state.args.port, &state.args.secret, &state.args.exchange_dir, &state.args.executor_exchange_dir);
     HttpResponse::Ok()
         .content_type("text/plain; charset=utf-8")
         .body(lua)

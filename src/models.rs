@@ -46,9 +46,14 @@ pub struct Args {
     #[arg(long, value_enum, default_value_t = ServerMode::Xeno)]
     pub mode: ServerMode,
 
-    /// Directory for script exchange files (used in generic mode)
+    /// Directory for script exchange files — real OS path where the server writes scripts (used in generic mode)
     #[arg(long, default_value = "./exchange")]
     pub exchange_dir: String,
+
+    /// Exchange directory path as seen by the executor's filesystem (used in the loader script).
+    /// If not set, defaults to the same value as --exchange-dir.
+    #[arg(long)]
+    pub executor_exchange_dir: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
