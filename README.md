@@ -219,7 +219,7 @@ Generic mode lets you use xeno-mcp with **any executor** that supports basic fil
          "args": ["-y", "/path/to/xeno-mcp/mcp-bridge"],
          "env": {
            "XENO_MCP_MODE": "generic",
-           "XENO_MCP_WORKSPACE": "C:\\path\\to\\executor\\Workspace"
+           "GENERIC_EXECUTOR_WORKSPACE": "C:\\path\\to\\executor\\Workspace"
          }
        }
      }
@@ -266,4 +266,4 @@ Opens a web UI where you can invoke tools and read resources interactively.
 | `XENO_MCP_URL` | `http://localhost:3111` | Where the HTTP server is |
 | `XENO_MCP_SECRET` | — | Shared secret (if the server uses `--secret`) |
 | `XENO_MCP_MODE` | `xeno` | Server mode: `xeno` or `generic` |
-| `XENO_MCP_WORKSPACE` | — | Executor's workspace folder path (generic mode). The bridge creates an `exchange/` subfolder automatically. |
+| `GENERIC_EXECUTOR_WORKSPACE` | — | Executor's workspace folder path (generic mode). The bridge creates an `exchange/` subfolder automatically. |
