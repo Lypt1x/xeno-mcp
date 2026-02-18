@@ -152,6 +152,10 @@ async fn main() -> std::io::Result<()> {
                     .default_service(web::to(loader_script_method_not_allowed)),
             )
             .service(
+                web::resource("/verify-script")
+                    .route(web::post().to(xeno_routes::post_verify_script))
+            )
+            .service(
                 web::resource("/internal")
                     .route(web::post().to(internal::post_internal))
                     .default_service(web::to(internal_method_not_allowed)),

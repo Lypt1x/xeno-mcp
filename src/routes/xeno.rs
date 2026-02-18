@@ -77,7 +77,15 @@ fn post_execute_generic(
     let file_id = Uuid::new_v4().to_string();
     let file_path = format!("{}/pending/{}.lua", state.args.exchange_dir, file_id);
 
-    match std::fs::write(&file_path, &req_body.script) {
+    // Sign the script if a secret is configured
+    let file_content = if let Some(ref secret) = state.args.secret {
+        let sig = hex::encode(hmac_sha256::HMAC::mac(req_body.script.as_bytes(), secret.as_bytes()));
+        format!("-- SIG:{}\n{}", sig, req_body.script)
+    } else {
+        req_body.script.clone()
+    };
+
+    match std::fs::write(&file_path, &file_content) {
         Ok(()) => {
             // Log the script execution
             let entry = LogEntry {
@@ -342,4 +350,31 @@ pub async fn get_loader_script(state: web::Data<Arc<AppState>>) -> HttpResponse 
     HttpResponse::Ok()
         .content_type("text/plain; charset=utf-8")
         .body(lua)
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct VerifyScriptRequest {
+    pub signature: String,
+    pub script: String,
+}
+
+pub async fn post_verify_script(
+    body: web::Json<VerifyScriptRequest>,
+    state: web::Data<Arc<AppState>>,
+) -> HttpResponse {
+    let secret = match &state.args.secret {
+        Some(s) => s,
+        None => {
+            // No secret configured — signing is disabled, always valid
+            return HttpResponse::Ok().json(serde_json::json!({ "ok": true, "valid": true }));
+        }
+    };
+
+    let expected = hex::encode(hmac_sha256::HMAC::mac(body.script.as_bytes(), secret.as_bytes()));
+    let valid = body.signature == expected;
+
+    HttpResponse::Ok().json(serde_json::json!({
+        "ok": true,
+        "valid": valid,
+    }))
 }

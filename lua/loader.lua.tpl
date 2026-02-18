@@ -150,24 +150,65 @@ task.spawn(function()
 end)
 
 -- script polling loop
+local VERIFY_URL = SERVER_URL .. "/verify-script"
+
 while getgenv().__XENO_MCP_GENERIC_LOADER do
     local ok, files = pcall(listfiles, PENDING_DIR)
     if ok and files then
         for _, filePath in ipairs(files) do
             if string.sub(filePath, -4) == ".lua" then
-                local readOk, script = pcall(readfile, filePath)
-                if readOk and script then
+                local readOk, rawContent = pcall(readfile, filePath)
+                if readOk and rawContent then
                     pcall(delfile, filePath)
-                    sendLog("info", "Executing script: " .. filePath, "loader")
 
-                    local fn, compileErr = loadstring(script)
-                    if fn then
-                        local execOk, execErr = pcall(fn)
-                        if not execOk then
-                            sendLog("error", "Script error: " .. tostring(execErr), "loader")
+                    local script = rawContent
+                    local verified = true
+
+                    -- verify HMAC signature when secret is configured
+                    if SECRET ~= "" then
+                        local sigLine = string.match(rawContent, "^(-- SIG:%x+)\n")
+                        if sigLine then
+                            local signature = string.sub(sigLine, 8)
+                            script = string.sub(rawContent, #sigLine + 2)
+                            local vOk, valid = pcall(function()
+                                local resp = request({
+                                    Url = VERIFY_URL,
+                                    Method = "POST",
+                                    Headers = makeHeaders(),
+                                    Body = HttpService:JSONEncode({
+                                        signature = signature,
+                                        script = script
+                                    })
+                                })
+                                if resp and resp.StatusCode == 200 then
+                                    local data = HttpService:JSONDecode(resp.Body)
+                                    return data.valid == true
+                                end
+                                return false
+                            end)
+                            verified = vOk and valid
+                        else
+                            verified = false
                         end
-                    else
-                        sendLog("error", "Compile error: " .. tostring(compileErr), "loader")
+
+                        if not verified then
+                            sendLog("error", "Rejected unsigned/invalid script: " .. filePath, "loader")
+                            notify("Blocked unsigned script.", 5)
+                            script = nil
+                        end
+                    end
+
+                    if script then
+                        sendLog("info", "Executing script: " .. filePath, "loader")
+                        local fn, compileErr = loadstring(script)
+                        if fn then
+                            local execOk, execErr = pcall(fn)
+                            if not execOk then
+                                sendLog("error", "Script error: " .. tostring(execErr), "loader")
+                            end
+                        else
+                            sendLog("error", "Compile error: " .. tostring(compileErr), "loader")
+                        end
                     end
                 end
             end
