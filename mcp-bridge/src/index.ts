@@ -27,6 +27,15 @@ async function ensureHttpServer(): Promise<void> {
   const secret = process.env.XENO_MCP_SECRET;
   if (secret) args.push("--secret", secret);
 
+  const mode = process.env.XENO_MCP_MODE;
+  if (mode) args.push("--mode", mode);
+
+  const exchangeDir = process.env.XENO_MCP_EXCHANGE_DIR;
+  if (exchangeDir) args.push("--exchange-dir", exchangeDir);
+
+  const executorExchangeDir = process.env.XENO_MCP_EXECUTOR_EXCHANGE_DIR;
+  if (executorExchangeDir) args.push("--executor-exchange-dir", executorExchangeDir);
+
   const child = spawn(exe, args, {
     detached: true,
     stdio: "ignore",
