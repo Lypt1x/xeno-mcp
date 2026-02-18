@@ -10,6 +10,8 @@ Supports two modes:
 - **Xeno mode** — direct integration with the [Xeno](https://xeno.now) executor
 - **Generic mode** — file-based adapter that works with **any** executor (Solara, Velocity, etc.)
 
+> **Why file-based and not DLL injection?** Each executor uses its own internal API with different function signatures, memory layouts, and calling conventions — there's no universal DLL interface. Supporting executors via DLL would mean writing and maintaining a separate proxy for every single one, and any executor update could break it. The file-based approach works with any executor out of the box as long as it supports basic UNC functions (`readfile`, `writefile`, etc.), which virtually all of them do. It's also completely non-invasive — no hooking into executor internals, no binary compatibility issues, and no risk of triggering anti-cheat from foreign DLL injection.
+
 > **What is Xeno?** — A free, keyless Roblox script executor with multi-attach support. Grab it at [xeno.now](https://xeno.now).
 
 ---
