@@ -4,14 +4,22 @@
 
 # xeno-mcp
 
-An MCP server that lets AI agents interact with Roblox game clients through the [Xeno](https://xeno.now) executor. Execute Lua scripts, capture game output, and manage client connections — all from your favorite AI tool.
+An MCP server that lets AI agents interact with Roblox game clients through the [Xeno](https://xeno.now) executor — or any other executor using the generic file-based adapter. Execute Lua scripts, capture game output, and manage client connections — all from your favorite AI tool.
 
 > **What is Xeno?** — A free, keyless Roblox script executor with multi-attach support. Grab it at [xeno.now](https://xeno.now).
 
 ## How it works
 
+Two modes:
+
+**Xeno mode** (default) — direct API integration with the Xeno executor:
 ```
 AI Agent ←—stdio—→ MCP Bridge (TypeScript) ←—http—→ HTTP Server (Rust) ←—http—→ Xeno ←→ Roblox
+```
+
+**Generic mode** — file-based adapter that works with any executor:
+```
+AI Agent ←—stdio—→ MCP Bridge (TypeScript) ←—http—→ HTTP Server (Rust) ←—file—→ Exchange Dir ←—poll—→ Loader Script (in executor) ←→ Roblox
 ```
 
 Two components:
@@ -135,12 +143,13 @@ The MCP server exposes these tools to the AI agent:
 
 | Tool | What it does |
 |------|-------------|
-| `get_health` | Server status, Xeno connectivity, which clients have the logger |
+| `get_health` | Server status, executor connectivity, which clients have the logger |
 | `get_clients` | List connected Roblox clients with their PID, username, and state |
 | `execute_lua` | Run a Lua script on one or more clients |
-| `attach_logger` | Inject the log-forwarding script into clients |
+| `attach_logger` | Inject the log-forwarding script into clients (Xeno mode only) |
 | `get_logs` | Query captured output with filters (level, search, time range, etc.) |
 | `clear_logs` | Wipe all stored logs |
+| `get_loader_script` | Get the generic loader script for non-Xeno executors (generic mode) |
 | `search_scripts` | Search community scripts on ScriptBlox by keyword |
 | `browse_scripts` | Browse trending, popular, or recent scripts on ScriptBlox |
 | `get_script_details` | Fetch full metadata and raw source code for a ScriptBlox script |
@@ -154,10 +163,11 @@ If you want to hit the server directly (without MCP):
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/health` | Server + Xeno status |
+| `GET` | `/health` | Server + executor status |
 | `GET` | `/clients` | List Roblox clients |
 | `POST` | `/execute` | Execute Lua (`{ "script": "...", "pids": ["123"] }`) |
 | `POST` | `/attach-logger` | Attach log script (`{ "pids": ["123"] }`) |
+| `GET` | `/loader-script` | Get the generic loader Lua script (generic mode) |
 | `POST` | `/internal` | Client → server event channel (used by the Lua script) |
 | `GET` | `/logs` | Query logs (supports `level`, `search`, `source`, `pid`, `page`, `limit`, `offset`, `after`, `before`, `tag`, `order`) |
 | `DELETE` | `/logs` | Clear logs |
@@ -186,7 +196,44 @@ Options:
       --secret <SECRET>          Require X-Xeno-Secret header on POST/DELETE
       --max-entries <N>          Max log entries in memory [default: 10000]
       --xeno-url <URL>           Xeno API URL [default: http://localhost:3110]
+      --mode <MODE>              Server mode: xeno or generic [default: xeno]
+      --exchange-dir <DIR>       Directory for script exchange files [default: ./exchange]
 ```
+
+## Generic mode
+
+Generic mode lets you use xeno-mcp with **any executor** that supports basic file system UNC functions (`readfile`, `listfiles`, `isfile`, `delfile`, `request`, `getgenv`).
+
+### How it works
+
+1. Start the server in generic mode:
+   ```bash
+   ./target/release/xeno-mcp --mode generic --exchange-dir C:\path\to\exchange --console
+   ```
+
+2. The server creates `exchange/pending/` and `exchange/done/` subdirectories
+
+3. Get the loader script — either via the API (`GET /loader-script`) or ask the AI agent to use the `get_loader_script` tool
+
+4. Paste the loader script into your executor and run it. The loader:
+   - Registers itself with the server
+   - Polls `exchange/pending/` for new `.lua` files every 200ms
+   - Executes scripts via `loadstring()` and deletes the file
+   - Captures all `print`/`warn`/`error` output and sends it to the server
+   - Sends heartbeats every 5 seconds
+   - Automatically disconnects when the player leaves the game
+
+5. From here, the AI agent uses `execute_lua` and `get_logs` as normal. Scripts are delivered through the exchange directory instead of direct API calls.
+
+### Requirements for generic mode
+
+Your executor must support these UNC functions:
+- `readfile(path)` — read file contents
+- `listfiles(path)` — list files in a directory
+- `isfile(path)` — check if a path is a file
+- `delfile(path)` — delete a file
+- `request({...})` — make HTTP requests
+- `getgenv()` — global environment table
 
 ## Testing the MCP server
 

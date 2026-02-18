@@ -113,19 +113,29 @@ IMPORTANT: Before executing scripts or reading logs, check if the logger is atta
     {},
     async () => {
       try {
-        const clients = await fetchClients();
+        const data = await apiGet("/clients");
+        if (!data?.ok) return text(formatError(data));
+
+        // Generic mode returns different client format
+        if (data.mode === "generic") {
+          if (!Array.isArray(data.clients) || data.clients.length === 0) {
+            return text("No clients connected. The user needs to run the loader script in their executor. Use get_loader_script to obtain it.");
+          }
+          return text(JSON.stringify(data, null, 2));
+        }
+
+        // Xeno mode
+        const clients = data.clients?.map((c: any) => ({
+          client: `${c.username}(${c.pid})`,
+          status: c.status_text,
+          logger_attached: !!c.logger_attached,
+        })) ?? [];
+
         if (clients.length === 0) {
-          const data = await apiGet("/clients");
-          if (!data?.ok) return text(formatError(data));
           return text("No Roblox clients are connected to Xeno.");
         }
 
-        const summary = clients.map(c => ({
-          client: c.label,
-          status: c.status_text,
-          logger_attached: c.logger_attached,
-        }));
-        return text(JSON.stringify({ ok: true, clients: summary }, null, 2));
+        return text(JSON.stringify({ ok: true, clients }, null, 2));
       } catch (e: any) {
         return text(formatCatchError(e));
       }
@@ -295,6 +305,35 @@ PAGINATION: Results are paginated with 50 logs per page by default (max: 1000). 
         const data = await apiDelete("/logs");
         if (!data.ok) return text(formatError(data));
         return text(JSON.stringify(data, null, 2));
+      } catch (e: any) {
+        return text(formatCatchError(e));
+      }
+    }
+  );
+
+  server.tool(
+    "get_loader_script",
+    `Get the generic loader script for non-Xeno executors. This is only needed when the server runs in generic mode (--mode generic).
+
+The loader script is a Lua script that:
+- Polls the exchange directory for new scripts to execute
+- Captures all print/warn/error output and sends it to the server
+- Sends heartbeats to keep the connection alive
+- Automatically disconnects when the player leaves the game
+
+USAGE:
+1. Call this tool to get the loader script
+2. Tell the user to paste it into their executor and run it
+3. Wait for the client to appear in get_clients
+4. From there, use execute_lua and get_logs as normal
+
+The loader includes the logger — no separate attach_logger step is needed in generic mode.`,
+    {},
+    async () => {
+      try {
+        const resp = await fetch(`http://localhost:${process.env.XENO_MCP_PORT || 3111}/loader-script`);
+        const script = await resp.text();
+        return text(`Here is the loader script. The user should paste this into their executor and run it:\n\n\`\`\`lua\n${script}\n\`\`\``);
       } catch (e: any) {
         return text(formatCatchError(e));
       }

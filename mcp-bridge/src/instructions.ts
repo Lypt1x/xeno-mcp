@@ -119,8 +119,29 @@ SCRIPTBLOX PRESENTATION:
 - Highlight the best options and explain why you recommend them
 
 WORKFLOW TIPS:
-1. Start by calling get_clients to see available Roblox clients and their status
-2. Attach the logger if you want to capture output: attach_logger with the PID(s)
-3. Execute Lua scripts with execute_lua — always validate results via get_logs or getgenv()
-4. Use get_health for an overview of server state, Xeno connection, and logger tracking
+1. Start by calling get_health to check the server mode (xeno or generic) and connection status
+2. In XENO MODE: call get_clients, attach_logger, then execute_lua as normal
+3. In GENERIC MODE: call get_loader_script, give it to the user, wait for client to appear in get_clients, then execute_lua
+4. Execute Lua scripts with execute_lua — always validate results via get_logs or getgenv()
+5. Use get_health for an overview of server state, connection, and logger tracking
+
+GENERIC MODE — FILE-BASED ADAPTER:
+- When the server runs with --mode generic, it uses a file-based approach instead of the Xeno API
+- This allows ANY executor (Solara, Velocity, etc.) to work with xeno-mcp, not just Xeno
+- The server writes script files to an exchange directory, and a loader script running in the executor polls for new scripts
+
+GENERIC MODE WORKFLOW:
+1. Call get_health → check if mode is "generic"
+2. Call get_loader_script → get the Lua loader script
+3. Tell the user to paste the loader script into their executor and run it
+4. Wait for the client to appear in get_clients (the loader sends an "attached" event)
+5. From here, everything works the same: execute_lua, get_logs, etc.
+
+GENERIC MODE KEY DIFFERENCES:
+- No PIDs — clients are identified by username only
+- No separate attach_logger step — the loader already includes the logger
+- Scripts are delivered via file exchange, not direct API calls
+- The "pids" parameter in execute_lua is ignored — scripts go to all connected loaders
+- There may be a slight delay (~200ms) between execute_lua and actual execution
+- Required UNC functions in the executor: readfile, listfiles, isfile, delfile, request, getgenv
 `;
