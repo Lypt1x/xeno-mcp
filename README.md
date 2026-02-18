@@ -208,8 +208,24 @@ Generic mode lets you use xeno-mcp with **any executor** that supports basic fil
 
 1. Start the server in generic mode:
    ```bash
-   ./target/release/xeno-mcp --mode generic --exchange-dir C:\path\to\exchange --console
+   ./target/release/xeno-mcp --mode generic --exchange-dir C:\path\to\executor\Workspace\exchange --executor-exchange-dir exchange --console
    ```
+   Or let the bridge handle it by setting env vars in your MCP config:
+   ```json
+   {
+     "mcpServers": {
+       "xeno-mcp": {
+         "command": "npx",
+         "args": ["-y", "/path/to/xeno-mcp/mcp-bridge"],
+         "env": {
+           "XENO_MCP_MODE": "generic",
+           "XENO_MCP_WORKSPACE": "C:\\path\\to\\executor\\Workspace"
+         }
+       }
+     }
+   }
+   ```
+   The bridge creates the `exchange/pending/` and `exchange/done/` subdirectories automatically.
 
 2. The server creates `exchange/pending/` and `exchange/done/` subdirectories
 
@@ -249,3 +265,5 @@ Opens a web UI where you can invoke tools and read resources interactively.
 |----------|---------|-------------|
 | `XENO_MCP_URL` | `http://localhost:3111` | Where the HTTP server is |
 | `XENO_MCP_SECRET` | — | Shared secret (if the server uses `--secret`) |
+| `XENO_MCP_MODE` | `xeno` | Server mode: `xeno` or `generic` |
+| `XENO_MCP_WORKSPACE` | — | Executor's workspace folder path (generic mode). The bridge creates an `exchange/` subfolder automatically. |
