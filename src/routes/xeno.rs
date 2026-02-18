@@ -4,22 +4,44 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use uuid::Uuid;
 
+use crate::loader::build_loader_lua;
 use crate::logger::build_logger_lua;
-use crate::models::{AppState, AttachLoggerRequest, ExecuteRequest, LogEntry};
+use crate::models::{AppState, AttachLoggerRequest, ExecuteRequest, LogEntry, ServerMode};
 use crate::routes::logs::{check_secret, store_entry};
 use crate::xeno::{xeno_execute, xeno_fetch_clients};
 
 pub async fn get_clients(state: web::Data<Arc<AppState>>) -> HttpResponse {
-    match xeno_fetch_clients(&state).await {
-        Ok(clients) => HttpResponse::Ok().json(serde_json::json!({
-            "ok": true,
-            "clients": clients
-        })),
-        Err(err) => HttpResponse::ServiceUnavailable().json(serde_json::json!({
-            "ok": false,
-            "error": err,
-            "status": 503
-        })),
+    match state.args.mode {
+        ServerMode::Xeno => {
+            match xeno_fetch_clients(&state).await {
+                Ok(clients) => HttpResponse::Ok().json(serde_json::json!({
+                    "ok": true,
+                    "clients": clients
+                })),
+                Err(err) => HttpResponse::ServiceUnavailable().json(serde_json::json!({
+                    "ok": false,
+                    "error": err,
+                    "status": 503
+                })),
+            }
+        }
+        ServerMode::Generic => {
+            let clients = state.generic_clients.read();
+            let connected: Vec<_> = clients.values()
+                .filter(|c| c.connected)
+                .map(|c| serde_json::json!({
+                    "username": c.username,
+                    "connected": c.connected,
+                    "connected_at": c.connected_at.to_rfc3339(),
+                    "last_heartbeat": c.last_heartbeat.to_rfc3339(),
+                }))
+                .collect();
+            HttpResponse::Ok().json(serde_json::json!({
+                "ok": true,
+                "mode": "generic",
+                "clients": connected,
+            }))
+        }
     }
 }
 
@@ -34,13 +56,6 @@ pub async fn post_execute(
 
     let req_body = body.into_inner();
 
-    if req_body.pids.is_empty() {
-        return HttpResponse::BadRequest().json(serde_json::json!({
-            "ok": false,
-            "error": "pids array must not be empty",
-            "status": 400
-        }));
-    }
     if req_body.script.trim().is_empty() {
         return HttpResponse::BadRequest().json(serde_json::json!({
             "ok": false,
@@ -49,7 +64,62 @@ pub async fn post_execute(
         }));
     }
 
-    let clients = match xeno_fetch_clients(&state).await {
+    match state.args.mode {
+        ServerMode::Generic => post_execute_generic(&req_body, &state),
+        ServerMode::Xeno => post_execute_xeno(req_body, &state).await,
+    }
+}
+
+fn post_execute_generic(
+    req_body: &ExecuteRequest,
+    state: &web::Data<Arc<AppState>>,
+) -> HttpResponse {
+    let file_id = Uuid::new_v4().to_string();
+    let file_path = format!("{}/pending/{}.lua", state.args.exchange_dir, file_id);
+
+    match std::fs::write(&file_path, &req_body.script) {
+        Ok(()) => {
+            // Log the script execution
+            let entry = LogEntry {
+                id: Uuid::new_v4().to_string(),
+                timestamp: Local::now(),
+                level: "script".to_string(),
+                message: req_body.script.clone(),
+                source: Some("execute_lua".to_string()),
+                pid: None,
+                username: None,
+                tags: vec!["script".to_string(), "executed".to_string(), "generic".to_string()],
+            };
+            store_entry(state, &entry);
+
+            HttpResponse::Ok().json(serde_json::json!({
+                "ok": true,
+                "mode": "generic",
+                "file_id": file_id,
+                "message": "Script written to exchange directory. Loader will pick it up.",
+            }))
+        }
+        Err(err) => HttpResponse::InternalServerError().json(serde_json::json!({
+            "ok": false,
+            "error": format!("Failed to write script file: {}", err),
+            "status": 500
+        })),
+    }
+}
+
+async fn post_execute_xeno(
+    req_body: ExecuteRequest,
+    state: &web::Data<Arc<AppState>>,
+) -> HttpResponse {
+    if req_body.pids.is_empty() {
+        return HttpResponse::BadRequest().json(serde_json::json!({
+            "ok": false,
+            "error": "pids array must not be empty",
+            "status": 400
+        }));
+    }
+
+    let clients = match xeno_fetch_clients(state).await {
         Ok(c) => c,
         Err(err) => {
             return HttpResponse::ServiceUnavailable().json(serde_json::json!({
@@ -94,9 +164,8 @@ pub async fn post_execute(
         }));
     }
 
-    match xeno_execute(&state, &req_body.script, &req_body.pids).await {
+    match xeno_execute(state, &req_body.script, &req_body.pids).await {
         Ok(()) => {
-            // Log the executed script
             let target_names: Vec<String> = req_body.pids.iter().map(|pid| {
                 clients.iter()
                     .find(|c| c.pid.to_string() == *pid)
@@ -119,7 +188,7 @@ pub async fn post_execute(
                     t
                 },
             };
-            store_entry(&state, &entry);
+            store_entry(state, &entry);
 
             let logger_pids = state.logger_pids.read();
             let mut logger_status: Vec<serde_json::Value> = Vec::new();
@@ -161,6 +230,17 @@ pub async fn post_attach_logger(
 ) -> HttpResponse {
     if let Err(resp) = check_secret(&req, &state) {
         return resp;
+    }
+
+    match state.args.mode {
+        ServerMode::Generic => {
+            return HttpResponse::Ok().json(serde_json::json!({
+                "ok": true,
+                "mode": "generic",
+                "message": "In generic mode, the logger is embedded in the loader script. No separate attach step needed. Use GET /loader-script to obtain the loader.",
+            }));
+        }
+        ServerMode::Xeno => {}
     }
 
     let req_body = body.into_inner();
@@ -255,4 +335,11 @@ pub async fn post_attach_logger(
             "status": 502
         })),
     }
+}
+
+pub async fn get_loader_script(state: web::Data<Arc<AppState>>) -> HttpResponse {
+    let lua = build_loader_lua(state.args.port, &state.args.secret, &state.args.exchange_dir, &state.args.executor_exchange_dir);
+    HttpResponse::Ok()
+        .content_type("text/plain; charset=utf-8")
+        .body(lua)
 }

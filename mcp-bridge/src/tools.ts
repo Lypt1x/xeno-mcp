@@ -17,7 +17,7 @@ function formatError(data: any): string {
   if (data?.error) {
     const err = String(data.error);
     if (err.includes("Cannot reach Xeno") || err.includes("localhost:3110")) {
-      return `The Xeno executor is not reachable. Please ask the user to:\n1. Make sure the Xeno executor application is open\n2. Make sure Xeno is injected into a Roblox client\n\nDo NOT retry automatically — this requires the user to take action.\n\nOriginal error: ${err}`;
+      return `The executor is not reachable. In Xeno mode, make sure the Xeno application is open and injected. In generic mode, this error should not appear — check if the xeno-mcp server is running.\n\nDo NOT retry automatically — this requires the user to take action.\n\nOriginal error: ${err}`;
     }
     return `Error: ${err}${data.not_found ? `\nNot found PIDs: ${JSON.stringify(data.not_found)}` : ""}${data.not_attached ? `\nNot attached: ${JSON.stringify(data.not_attached)}` : ""}`;
   }
@@ -91,7 +91,7 @@ export function registerTools(server: McpServer) {
 
   server.tool(
     "get_health",
-    "Get the health status of the xeno-mcp server, Xeno executor connection, connected Roblox clients, and logger attachment state. Call this first to verify everything is operational.",
+    "Get the health status of the xeno-mcp server, executor connection, connected Roblox clients, and logger attachment state. Call this first to verify everything is operational and to determine the active mode (xeno or generic).",
     {},
     async () => {
       try {
@@ -105,27 +105,39 @@ export function registerTools(server: McpServer) {
 
   server.tool(
     "get_clients",
-    `List all Roblox clients currently connected to the Xeno executor.
-Returns each client as "Username(PID)" with their status and logger state.
-Use these identifiers for execute_lua and attach_logger — you can pass the full "Username(PID)" format, just the username, or just the PID.
+    `List all connected Roblox clients.
+In Xeno mode: returns each client as "Username(PID)" with their status and logger state.
+In generic mode: returns clients by username with connection and heartbeat info.
 
-IMPORTANT: Before executing scripts or reading logs, check if the logger is attached. If not, ask the user whether to attach it.`,
+Use these identifiers for execute_lua and attach_logger.
+
+IMPORTANT: Before executing scripts or reading logs, check if the logger is attached (Xeno mode) or if a client is connected (generic mode). If not, guide the user through setup.`,
     {},
     async () => {
       try {
-        const clients = await fetchClients();
-        if (clients.length === 0) {
-          const data = await apiGet("/clients");
-          if (!data?.ok) return text(formatError(data));
-          return text("No Roblox clients are connected to Xeno.");
+        const data = await apiGet("/clients");
+        if (!data?.ok) return text(formatError(data));
+
+        // Generic mode returns different client format
+        if (data.mode === "generic") {
+          if (!Array.isArray(data.clients) || data.clients.length === 0) {
+            return text("No clients connected. The user needs to run the loader in their executor. Tell them to paste this into their executor and run it:\n\nloadstring(game:HttpGet(\"http://localhost:3111/loader-script\"))()\n\nOnce they see an in-game notification saying 'Loader connected', they should tell you and you can proceed.");
+          }
+          return text(JSON.stringify(data, null, 2));
         }
 
-        const summary = clients.map(c => ({
-          client: c.label,
+        // Xeno mode
+        const clients = data.clients?.map((c: any) => ({
+          client: `${c.username}(${c.pid})`,
           status: c.status_text,
-          logger_attached: c.logger_attached,
-        }));
-        return text(JSON.stringify({ ok: true, clients: summary }, null, 2));
+          logger_attached: !!c.logger_attached,
+        })) ?? [];
+
+        if (clients.length === 0) {
+          return text("No Roblox clients are connected. In Xeno mode, make sure Xeno is open and injected. In generic mode, run the loader script first.");
+        }
+
+        return text(JSON.stringify({ ok: true, clients }, null, 2));
       } catch (e: any) {
         return text(formatCatchError(e));
       }
@@ -137,7 +149,7 @@ IMPORTANT: Before executing scripts or reading logs, check if the logger is atta
     `Execute a Lua script on one or more Roblox clients.
 
 IMPORTANT REQUIREMENTS:
-- The client must be "Attached" (status 3) — meaning Xeno is injected and the player is in a game
+- The client must be "Attached" (status 3) in Xeno mode, or connected via the loader in generic mode
 - The logger MUST be attached first (via attach_logger) so you can read script output through get_logs
 - Without the logger, your script runs but you have NO way to see its output or verify it worked
 - If the logger is not attached, ASK THE USER whether to attach it before proceeding
@@ -152,15 +164,29 @@ EXECUTION CONSTRAINTS:
 
 CLIENT IDENTIFICATION:
 - Pass clients as "Username(PID)" (e.g. "Lypt1x(35540)"), username, or PID
-- Prefer the "Username(PID)" format from get_clients`,
+- Prefer the "Username(PID)" format from get_clients
+- If you pass an EMPTY clients array and there is exactly ONE connected client, it will be auto-selected`,
     {
       script: z.string().describe("The Lua script to execute. Must be valid Luau code."),
-      clients: z.array(z.string()).describe('Client identifiers — use "Username(PID)" format from get_clients, or just username or PID.'),
+      clients: z.array(z.string()).optional().describe('Client identifiers — use "Username(PID)" format from get_clients, or just username or PID. Leave empty to auto-select if only one client is connected.'),
     },
     async ({ script, clients: identifiers }) => {
       try {
         const allClients = await fetchClients();
-        const { pids, errors } = resolveIdentifiers(identifiers, allClients);
+
+        // Auto-select single client when no identifiers provided
+        const resolvedIdentifiers = (!identifiers || identifiers.length === 0)
+          ? (allClients.length === 1 ? [allClients[0].label] : [])
+          : identifiers;
+
+        if (resolvedIdentifiers.length === 0) {
+          if (allClients.length === 0) {
+            return text("No clients connected. Cannot execute script.");
+          }
+          return text(`Multiple clients connected. Please specify which client(s) to target:\n${allClients.map(c => `  - ${c.label}`).join("\n")}`);
+        }
+
+        const { pids, errors } = resolveIdentifiers(resolvedIdentifiers, allClients);
 
         if (errors.length > 0) {
           return text(`Error resolving clients:\n${errors.join("\n")}\n\nAvailable clients: ${allClients.map(c => c.label).join(", ") || "none"}`);
@@ -168,6 +194,37 @@ CLIENT IDENTIFICATION:
 
         const data = await apiPost("/execute", { script, pids });
         if (!data.ok) return text(formatError(data));
+
+        // In generic mode, poll for script output to give instant feedback
+        if (data.mode === "generic") {
+          const afterTs = new Date().toISOString();
+          let capturedOutput: string[] = [];
+          for (let i = 0; i < 4; i++) {
+            await new Promise(r => setTimeout(r, 500));
+            try {
+              const logs = await apiGet("/logs", {
+                after: afterTs,
+                limit: "20",
+                order: "asc",
+              });
+              if (logs.logs && Array.isArray(logs.logs)) {
+                for (const log of logs.logs) {
+                  const line = `[${log.level}] ${log.message}`;
+                  if (!capturedOutput.includes(line)) {
+                    capturedOutput.push(line);
+                  }
+                }
+              }
+              // Stop early if we got error/output logs (not just loader info)
+              if (capturedOutput.some(l => l.startsWith("[output]") || l.startsWith("[error]") || l.startsWith("[warn]"))) break;
+            } catch { /* ignore polling errors */ }
+          }
+
+          if (capturedOutput.length > 0) {
+            data.captured_output = capturedOutput;
+          }
+        }
+
         return text(JSON.stringify(data, null, 2));
       } catch (e: any) {
         return text(formatCatchError(e));
@@ -261,7 +318,7 @@ PAGINATION: Results are paginated with 50 logs per page by default (max: 1000). 
           const hints: string[] = [];
 
           if (clients.length === 0) {
-            hints.push("No Roblox clients are connected to Xeno.");
+            hints.push("No Roblox clients are connected.");
           } else {
             const withoutLogger = clients.filter(c => !c.logger_attached);
             const withLogger = clients.filter(c => c.logger_attached);
@@ -295,6 +352,28 @@ PAGINATION: Results are paginated with 50 logs per page by default (max: 1000). 
         const data = await apiDelete("/logs");
         if (!data.ok) return text(formatError(data));
         return text(JSON.stringify(data, null, 2));
+      } catch (e: any) {
+        return text(formatCatchError(e));
+      }
+    }
+  );
+
+  server.tool(
+    "get_loader_script",
+    `Get the raw generic loader script source code. This is an INTERNAL/ADVANCED tool — only used when the server runs in generic mode (--mode generic).
+
+IMPORTANT: In most cases, you should NOT call this tool. Instead, tell the user to paste this one-liner into their executor:
+  loadstring(game:HttpGet("http://localhost:3111/loader-script"))()
+
+This tool exists only for advanced use cases (e.g., inspecting the loader source, saving it to autoexec).
+For autoexec setup, the user just needs to save the one-liner above into a .lua file in their executor's autoexec folder.
+The loader includes the logger — no separate attach_logger step is needed in generic mode.`,
+    {},
+    async () => {
+      try {
+        const resp = await fetch(`http://localhost:${process.env.XENO_MCP_PORT || 3111}/loader-script`);
+        const script = await resp.text();
+        return text(`INTERNAL: Raw loader script source. Do NOT paste this into the chat for the user. Instead, tell them to run:\n\nloadstring(game:HttpGet("http://localhost:3111/loader-script"))()\n\n---\n\n${script}`);
       } catch (e: any) {
         return text(formatCatchError(e));
       }

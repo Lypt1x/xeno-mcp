@@ -27,6 +27,24 @@ async function ensureHttpServer(): Promise<void> {
   const secret = process.env.XENO_MCP_SECRET;
   if (secret) args.push("--secret", secret);
 
+  const mode = process.env.XENO_MCP_MODE;
+  if (mode) args.push("--mode", mode);
+
+  // For generic mode, user only needs to provide GENERIC_EXECUTOR_WORKSPACE (the executor's workspace folder).
+  // The bridge derives exchange-dir (OS path) and executor-exchange-dir (executor-relative path) from it.
+  const workspace = process.env.GENERIC_EXECUTOR_WORKSPACE;
+  if (workspace) {
+    args.push("--exchange-dir", resolve(workspace, "exchange"));
+    args.push("--executor-exchange-dir", "exchange");
+  }
+
+  // Advanced: override derived paths if needed
+  const exchangeDir = process.env.GENERIC_EXECUTOR_EXCHANGE_DIR;
+  if (exchangeDir) args.push("--exchange-dir", exchangeDir);
+
+  const executorExchangeDir = process.env.GENERIC_EXECUTOR_RELATIVE_DIR;
+  if (executorExchangeDir) args.push("--executor-exchange-dir", executorExchangeDir);
+
   const child = spawn(exe, args, {
     detached: true,
     stdio: "ignore",

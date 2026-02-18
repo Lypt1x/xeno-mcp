@@ -62,3 +62,10 @@ pub async fn health_method_not_allowed(req: HttpRequest) -> HttpResponse {
         &format!("Method {} is not allowed on /health. Allowed: GET", req.method()),
     )
 }
+
+pub async fn loader_script_method_not_allowed(req: HttpRequest) -> HttpResponse {
+    json_error(
+        actix_web::http::StatusCode::METHOD_NOT_ALLOWED,
+        &format!("Method {} is not allowed on /loader-script. Allowed: GET", req.method()),
+    )
+}

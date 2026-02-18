@@ -1,8 +1,14 @@
 use chrono::{DateTime, Local};
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
+
+#[derive(Debug, Clone, ValueEnum)]
+pub enum ServerMode {
+    Xeno,
+    Generic,
+}
 
 #[derive(Parser, Debug, Clone)]
 #[command(name = "xeno-mcp", about = "Roblox log receiver + Xeno API wrapper")]
@@ -32,9 +38,22 @@ pub struct Args {
     #[arg(long, default_value_t = 10_000)]
     pub max_entries: usize,
 
-    /// Xeno local API base URL
+    /// Xeno local API base URL (only used in xeno mode)
     #[arg(long, default_value = "http://localhost:3110")]
     pub xeno_url: String,
+
+    /// Server mode: "xeno" for Xeno WebSocket API, "generic" for file-based adapter
+    #[arg(long, value_enum, default_value_t = ServerMode::Xeno)]
+    pub mode: ServerMode,
+
+    /// Directory for script exchange files — real OS path where the server writes scripts (used in generic mode)
+    #[arg(long, default_value = "./exchange")]
+    pub exchange_dir: String,
+
+    /// Exchange directory path as seen by the executor's filesystem (used in the loader script).
+    /// If not set, defaults to the same value as --exchange-dir.
+    #[arg(long)]
+    pub executor_exchange_dir: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -98,9 +117,18 @@ pub struct InternalEvent {
     pub tags: Vec<String>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct GenericClient {
+    pub username: String,
+    pub last_heartbeat: DateTime<Local>,
+    pub connected_at: DateTime<Local>,
+    pub connected: bool,
+}
+
 pub struct AppState {
     pub logs: RwLock<Vec<LogEntry>>,
     pub logger_pids: RwLock<HashSet<String>>,
+    pub generic_clients: RwLock<HashMap<String, GenericClient>>,
     pub http_client: reqwest::Client,
     pub args: Args,
 }
