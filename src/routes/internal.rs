@@ -82,8 +82,22 @@ fn handle_generic_event(
 
         "heartbeat" => {
             let mut clients = state.generic_clients.write();
+            let now = Local::now();
             if let Some(client) = clients.get_mut(&username) {
-                client.last_heartbeat = Local::now();
+                client.last_heartbeat = now;
+                if !client.connected {
+                    client.connected = true;
+                    println!("[xeno-mcp] \u{2713} Client '{}' reconnected via heartbeat", username);
+                }
+            } else {
+                // Client not known (e.g. server restarted) — register it
+                clients.insert(username.clone(), GenericClient {
+                    username: username.clone(),
+                    last_heartbeat: now,
+                    connected_at: now,
+                    connected: true,
+                });
+                println!("[xeno-mcp] \u{2713} Client '{}' registered via heartbeat", username);
             }
             HttpResponse::Ok().json(serde_json::json!({
                 "ok": true,
@@ -137,9 +151,23 @@ fn handle_generic_event(
                 }
             };
 
-            // Update heartbeat on log events too
-            if let Some(client) = state.generic_clients.write().get_mut(&username) {
-                client.last_heartbeat = Local::now();
+            // Update heartbeat on log events too, auto-register if unknown
+            {
+                let now = Local::now();
+                let mut clients = state.generic_clients.write();
+                if let Some(client) = clients.get_mut(&username) {
+                    client.last_heartbeat = now;
+                    if !client.connected {
+                        client.connected = true;
+                    }
+                } else {
+                    clients.insert(username.clone(), GenericClient {
+                        username: username.clone(),
+                        last_heartbeat: now,
+                        connected_at: now,
+                        connected: true,
+                    });
+                }
             }
 
             let entry = LogEntry {
