@@ -162,9 +162,71 @@ fn handle_generic_event(
             }))
         }
 
+        "spy" => {
+            let message = match evt.message {
+                Some(m) if !m.is_empty() => m,
+                _ => {
+                    return HttpResponse::BadRequest().json(serde_json::json!({
+                        "ok": false,
+                        "error": "spy event requires a non-empty 'message' field",
+                        "status": 400
+                    }));
+                }
+            };
+
+            if let Some(client) = state.generic_clients.write().get_mut(&username) {
+                client.last_heartbeat = Local::now();
+            }
+
+            let entry = LogEntry {
+                id: Uuid::new_v4().to_string(),
+                timestamp: Local::now(),
+                level: evt.level.unwrap_or_else(|| "info".into()),
+                message,
+                source: Some("remote_spy".to_string()),
+                pid: None,
+                username: Some(username.clone()),
+                tags: if evt.tags.is_empty() { vec!["spy".into()] } else { evt.tags },
+            };
+            let id = entry.id.clone();
+            store_entry(state, &entry);
+
+            HttpResponse::Ok().json(serde_json::json!({
+                "ok": true,
+                "event": "spy",
+                "id": id,
+            }))
+        }
+
+        "spy_attached" => {
+            state.spy_clients.write().insert(username.clone());
+            if let Some(client) = state.generic_clients.write().get_mut(&username) {
+                client.last_heartbeat = Local::now();
+            }
+            println!("[xeno-mcp] \u{1f50d} Remote spy attached: {}", username);
+
+            HttpResponse::Ok().json(serde_json::json!({
+                "ok": true,
+                "event": "spy_attached",
+                "username": username,
+            }))
+        }
+
+        "spy_detached" => {
+            state.spy_clients.write().remove(&username);
+            state.spy_subscriptions.write().remove(&username);
+            println!("[xeno-mcp] \u{1f50d} Remote spy detached: {}", username);
+
+            HttpResponse::Ok().json(serde_json::json!({
+                "ok": true,
+                "event": "spy_detached",
+                "username": username,
+            }))
+        }
+
         _ => HttpResponse::BadRequest().json(serde_json::json!({
             "ok": false,
-            "error": format!("Unknown event '{}'. Valid events: attached, already_attached, heartbeat, disconnected, log", event),
+            "error": format!("Unknown event '{}'. Valid events: attached, already_attached, heartbeat, disconnected, log, spy, spy_attached, spy_detached", event),
             "status": 400
         })),
     }
@@ -313,9 +375,72 @@ async fn handle_xeno_event(
             }))
         }
 
+        "spy" => {
+            let message = match evt.message {
+                Some(m) if !m.is_empty() => m,
+                _ => {
+                    return HttpResponse::BadRequest().json(serde_json::json!({
+                        "ok": false,
+                        "error": "spy event requires a non-empty 'message' field",
+                        "status": 400
+                    }));
+                }
+            };
+
+            let entry = LogEntry {
+                id: Uuid::new_v4().to_string(),
+                timestamp: Local::now(),
+                level: evt.level.unwrap_or_else(|| "info".into()),
+                message,
+                source: Some("remote_spy".to_string()),
+                pid: resolved_pid.as_ref().and_then(|p| p.parse::<u64>().ok()),
+                username: Some(username.clone()),
+                tags: if evt.tags.is_empty() { vec!["spy".into()] } else { evt.tags },
+            };
+            let id = entry.id.clone();
+            store_entry(state, &entry);
+
+            HttpResponse::Ok().json(serde_json::json!({
+                "ok": true,
+                "event": "spy",
+                "id": id,
+            }))
+        }
+
+        "spy_attached" => {
+            if let Some(ref pid) = resolved_pid {
+                state.spy_clients.write().insert(pid.clone());
+            }
+            println!("[xeno-mcp] \u{1f50d} Remote spy attached: {} (PID {})",
+                username, resolved_pid.as_deref().unwrap_or("?"));
+
+            HttpResponse::Ok().json(serde_json::json!({
+                "ok": true,
+                "event": "spy_attached",
+                "username": username,
+                "pid": resolved_pid,
+            }))
+        }
+
+        "spy_detached" => {
+            if let Some(ref pid) = resolved_pid {
+                state.spy_clients.write().remove(pid);
+                state.spy_subscriptions.write().remove(pid);
+            }
+            println!("[xeno-mcp] \u{1f50d} Remote spy detached: {} (PID {})",
+                username, resolved_pid.as_deref().unwrap_or("?"));
+
+            HttpResponse::Ok().json(serde_json::json!({
+                "ok": true,
+                "event": "spy_detached",
+                "username": username,
+                "pid": resolved_pid,
+            }))
+        }
+
         _ => HttpResponse::BadRequest().json(serde_json::json!({
             "ok": false,
-            "error": format!("Unknown event '{}'. Valid events: attached, already_attached, disconnected, log", event),
+            "error": format!("Unknown event '{}'. Valid events: attached, already_attached, disconnected, log, spy, spy_attached, spy_detached", event),
             "status": 400
         })),
     }

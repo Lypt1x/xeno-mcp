@@ -129,6 +129,8 @@ pub struct AppState {
     pub logs: RwLock<Vec<LogEntry>>,
     pub logger_pids: RwLock<HashSet<String>>,
     pub generic_clients: RwLock<HashMap<String, GenericClient>>,
+    pub spy_clients: RwLock<HashSet<String>>,
+    pub spy_subscriptions: RwLock<HashMap<String, HashSet<String>>>,
     pub http_client: reqwest::Client,
     pub args: Args,
 }
