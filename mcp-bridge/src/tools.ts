@@ -121,7 +121,7 @@ IMPORTANT: Before executing scripts or reading logs, check if the logger is atta
         // Generic mode returns different client format
         if (data.mode === "generic") {
           if (!Array.isArray(data.clients) || data.clients.length === 0) {
-            return text("No clients connected. The user needs to run the loader script in their executor. Use get_loader_script to obtain it.");
+            return text("No clients connected. The user needs to run the loader in their executor. Tell them to paste this into their executor and run it:\n\nloadstring(game:HttpGet(\"http://localhost:3111/loader-script\"))()\n\nOnce they see an in-game notification saying 'Loader connected', they should tell you and you can proceed.");
           }
           return text(JSON.stringify(data, null, 2));
         }
@@ -315,27 +315,19 @@ PAGINATION: Results are paginated with 50 logs per page by default (max: 1000). 
 
   server.tool(
     "get_loader_script",
-    `Get the generic loader script for executors other than Xeno. This is only used when the server runs in generic mode (--mode generic).
+    `Get the raw generic loader script source code. This is an INTERNAL/ADVANCED tool — only used when the server runs in generic mode (--mode generic).
 
-The loader script is a Lua script that:
-- Polls the exchange directory for new scripts to execute
-- Captures all print/warn/error output and sends it to the server
-- Sends heartbeats to keep the connection alive
-- Automatically disconnects when the player leaves the game
+IMPORTANT: In most cases, you should NOT call this tool. Instead, tell the user to paste this one-liner into their executor:
+  loadstring(game:HttpGet("http://localhost:3111/loader-script"))()
 
-USAGE:
-1. Call this tool to get the loader script
-2. Tell the user to paste it into their executor and run it
-3. Wait for the client to appear in get_clients
-4. From there, use execute_lua and get_logs as normal
-
+This tool exists only for advanced use cases (e.g., inspecting the loader source, saving it to autoexec).
 The loader includes the logger — no separate attach_logger step is needed in generic mode.`,
     {},
     async () => {
       try {
         const resp = await fetch(`http://localhost:${process.env.XENO_MCP_PORT || 3111}/loader-script`);
         const script = await resp.text();
-        return text(`Here is the loader script. The user should paste this into their executor and run it:\n\n\`\`\`lua\n${script}\n\`\`\``);
+        return text(`INTERNAL: Raw loader script source. Do NOT paste this into the chat for the user. Instead, tell them to run:\n\nloadstring(game:HttpGet("http://localhost:3111/loader-script"))()\n\n---\n\n${script}`);
       } catch (e: any) {
         return text(formatCatchError(e));
       }

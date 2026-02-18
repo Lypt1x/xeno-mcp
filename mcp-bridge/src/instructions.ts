@@ -125,7 +125,7 @@ SCRIPTBLOX PRESENTATION:
 WORKFLOW TIPS:
 1. Start by calling get_health to check the server mode (xeno or generic) and connection status
 2. In XENO MODE: call get_clients, attach_logger, then execute_lua as normal
-3. In GENERIC MODE: call get_loader_script, give it to the user, wait for client to appear in get_clients, then execute_lua
+3. In GENERIC MODE: check get_clients — if no clients are connected, guide the user through the FIRST-TIME SETUP below. If clients are already connected, proceed directly with execute_lua.
 4. Execute Lua scripts with execute_lua — always validate results via get_logs or getgenv()
 5. Use get_health for an overview of server state, connection, and logger tracking
 
