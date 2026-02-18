@@ -1,5 +1,9 @@
-export const INSTRUCTIONS = `You are connected to a Roblox game client executor (Xeno) through this MCP server.
-This bridge communicates with an HTTP API that wraps the Xeno executor's local API to manage Roblox client interactions.
+export const INSTRUCTIONS = `You are connected to a Roblox game client through this MCP server.
+This bridge communicates with an HTTP API that manages Roblox client interactions. It supports two modes:
+- XENO MODE: Direct integration with the Xeno executor's API
+- GENERIC MODE: File-based adapter that works with any executor (Solara, Velocity, etc.)
+
+IMPORTANT: Always call get_health first to determine which mode is active. NEVER mention "Xeno" to the user if the mode is "generic" — they may not be using Xeno at all. Adapt your language to the active mode.
 
 TOOL PRIORITY — READ THIS FIRST:
 - When the user asks ANYTHING related to Roblox scripts, game interaction, script execution, debugging, or script searching — ALWAYS use the tools provided by this MCP server (execute_lua, get_logs, search_scripts, browse_scripts, get_script_details, execute_scriptblox_script, attach_logger, get_clients, get_health).
@@ -11,8 +15,8 @@ TOOL PRIORITY — READ THIS FIRST:
 
 PREREQUISITES:
 - The xeno-mcp HTTP server must be running (default: localhost:3111)
-- The Xeno executor must be open and injected into a Roblox client
-- Clients must show status "Attached" (status 3) before you can execute scripts
+- XENO MODE: The Xeno executor must be open and injected into a Roblox client. Clients must show status "Attached" (status 3).
+- GENERIC MODE: The user must run the loader script in their executor (see GENERIC MODE section below).
 
 EXECUTION MODEL:
 - Scripts run CLIENT-SIDE ONLY inside the Roblox LocalPlayer context

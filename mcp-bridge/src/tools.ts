@@ -17,7 +17,7 @@ function formatError(data: any): string {
   if (data?.error) {
     const err = String(data.error);
     if (err.includes("Cannot reach Xeno") || err.includes("localhost:3110")) {
-      return `The Xeno executor is not reachable. Please ask the user to:\n1. Make sure the Xeno executor application is open\n2. Make sure Xeno is injected into a Roblox client\n\nDo NOT retry automatically — this requires the user to take action.\n\nOriginal error: ${err}`;
+      return `The executor is not reachable. In Xeno mode, make sure the Xeno application is open and injected. In generic mode, this error should not appear — check if the xeno-mcp server is running.\n\nDo NOT retry automatically — this requires the user to take action.\n\nOriginal error: ${err}`;
     }
     return `Error: ${err}${data.not_found ? `\nNot found PIDs: ${JSON.stringify(data.not_found)}` : ""}${data.not_attached ? `\nNot attached: ${JSON.stringify(data.not_attached)}` : ""}`;
   }
@@ -91,7 +91,7 @@ export function registerTools(server: McpServer) {
 
   server.tool(
     "get_health",
-    "Get the health status of the xeno-mcp server, Xeno executor connection, connected Roblox clients, and logger attachment state. Call this first to verify everything is operational.",
+    "Get the health status of the xeno-mcp server, executor connection, connected Roblox clients, and logger attachment state. Call this first to verify everything is operational and to determine the active mode (xeno or generic).",
     {},
     async () => {
       try {
@@ -105,11 +105,13 @@ export function registerTools(server: McpServer) {
 
   server.tool(
     "get_clients",
-    `List all Roblox clients currently connected to the Xeno executor.
-Returns each client as "Username(PID)" with their status and logger state.
-Use these identifiers for execute_lua and attach_logger — you can pass the full "Username(PID)" format, just the username, or just the PID.
+    `List all connected Roblox clients.
+In Xeno mode: returns each client as "Username(PID)" with their status and logger state.
+In generic mode: returns clients by username with connection and heartbeat info.
 
-IMPORTANT: Before executing scripts or reading logs, check if the logger is attached. If not, ask the user whether to attach it.`,
+Use these identifiers for execute_lua and attach_logger.
+
+IMPORTANT: Before executing scripts or reading logs, check if the logger is attached (Xeno mode) or if a client is connected (generic mode). If not, guide the user through setup.`,
     {},
     async () => {
       try {
@@ -132,7 +134,7 @@ IMPORTANT: Before executing scripts or reading logs, check if the logger is atta
         })) ?? [];
 
         if (clients.length === 0) {
-          return text("No Roblox clients are connected to Xeno.");
+          return text("No Roblox clients are connected. In Xeno mode, make sure Xeno is open and injected. In generic mode, run the loader script first.");
         }
 
         return text(JSON.stringify({ ok: true, clients }, null, 2));
@@ -147,7 +149,7 @@ IMPORTANT: Before executing scripts or reading logs, check if the logger is atta
     `Execute a Lua script on one or more Roblox clients.
 
 IMPORTANT REQUIREMENTS:
-- The client must be "Attached" (status 3) — meaning Xeno is injected and the player is in a game
+- The client must be "Attached" (status 3) in Xeno mode, or connected via the loader in generic mode
 - The logger MUST be attached first (via attach_logger) so you can read script output through get_logs
 - Without the logger, your script runs but you have NO way to see its output or verify it worked
 - If the logger is not attached, ASK THE USER whether to attach it before proceeding
@@ -271,7 +273,7 @@ PAGINATION: Results are paginated with 50 logs per page by default (max: 1000). 
           const hints: string[] = [];
 
           if (clients.length === 0) {
-            hints.push("No Roblox clients are connected to Xeno.");
+            hints.push("No Roblox clients are connected.");
           } else {
             const withoutLogger = clients.filter(c => !c.logger_attached);
             const withLogger = clients.filter(c => c.logger_attached);
@@ -313,7 +315,7 @@ PAGINATION: Results are paginated with 50 logs per page by default (max: 1000). 
 
   server.tool(
     "get_loader_script",
-    `Get the generic loader script for non-Xeno executors. This is only needed when the server runs in generic mode (--mode generic).
+    `Get the generic loader script for executors other than Xeno. This is only used when the server runs in generic mode (--mode generic).
 
 The loader script is a Lua script that:
 - Polls the exchange directory for new scripts to execute
