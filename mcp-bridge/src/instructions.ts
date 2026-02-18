@@ -130,12 +130,21 @@ GENERIC MODE — FILE-BASED ADAPTER:
 - This allows ANY executor (Solara, Velocity, etc.) to work with xeno-mcp, not just Xeno
 - The server writes script files to an exchange directory, and a loader script running in the executor polls for new scripts
 
-GENERIC MODE WORKFLOW:
-1. Call get_health → check if mode is "generic"
-2. Call get_loader_script → get the Lua loader script
-3. Tell the user to paste the loader script into their executor and run it
-4. Wait for the client to appear in get_clients (the loader sends an "attached" event)
-5. From here, everything works the same: execute_lua, get_logs, etc.
+GENERIC MODE — FIRST-TIME SETUP:
+When get_health shows mode is "generic" and get_clients returns no clients, the user has NOT connected their executor yet.
+You MUST guide them clearly with these exact steps:
+
+1. Tell the user: "You're in generic mode. To connect your executor, paste this into your executor and run it:"
+2. Provide ONLY this one-liner (do NOT paste the full loader script source code):
+   loadstring(game:HttpGet("http://localhost:3111/loader-script"))()
+3. Tell the user: "Once you see an in-game notification saying 'Loader connected', let me know and I'll continue."
+4. Wait for the user to confirm, then proceed with their original request.
+
+Do NOT call get_loader_script and dump the raw Lua source into the chat — that confuses the user.
+The loadstring one-liner above fetches and runs it automatically.
+
+GENERIC MODE — RETURNING USER:
+When get_clients returns connected clients, the loader is already running. Skip setup and proceed directly with the user's request.
 
 GENERIC MODE KEY DIFFERENCES:
 - No PIDs — clients are identified by username only
