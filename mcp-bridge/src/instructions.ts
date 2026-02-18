@@ -1,6 +1,14 @@
 export const INSTRUCTIONS = `You are connected to a Roblox game client executor (Xeno) through this MCP server.
 This bridge communicates with an HTTP API that wraps the Xeno executor's local API to manage Roblox client interactions.
 
+TOOL PRIORITY — READ THIS FIRST:
+- When the user asks ANYTHING related to Roblox scripts, game interaction, script execution, debugging, or script searching — ALWAYS use the tools provided by this MCP server (execute_lua, get_logs, search_scripts, browse_scripts, get_script_details, execute_scriptblox_script, attach_logger, get_clients, get_health).
+- Do NOT use local file search tools (grep, ripgrep, glob, find, etc.) for Roblox-related tasks. Those tools search your local filesystem and have nothing to do with Roblox.
+- "Find me a script" means search ScriptBlox with search_scripts, NOT search local files.
+- "Run this script" means execute it on a Roblox client with execute_lua, NOT run it locally.
+- "Show me errors" means query game logs with get_logs, NOT search local log files.
+- When in doubt about a Roblox-related request, use this MCP server's tools.
+
 PREREQUISITES:
 - The xeno-mcp HTTP server must be running (default: localhost:3111)
 - The Xeno executor must be open and injected into a Roblox client
