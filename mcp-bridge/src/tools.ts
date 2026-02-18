@@ -164,15 +164,29 @@ EXECUTION CONSTRAINTS:
 
 CLIENT IDENTIFICATION:
 - Pass clients as "Username(PID)" (e.g. "Lypt1x(35540)"), username, or PID
-- Prefer the "Username(PID)" format from get_clients`,
+- Prefer the "Username(PID)" format from get_clients
+- If you pass an EMPTY clients array and there is exactly ONE connected client, it will be auto-selected`,
     {
       script: z.string().describe("The Lua script to execute. Must be valid Luau code."),
-      clients: z.array(z.string()).describe('Client identifiers — use "Username(PID)" format from get_clients, or just username or PID.'),
+      clients: z.array(z.string()).optional().describe('Client identifiers — use "Username(PID)" format from get_clients, or just username or PID. Leave empty to auto-select if only one client is connected.'),
     },
     async ({ script, clients: identifiers }) => {
       try {
         const allClients = await fetchClients();
-        const { pids, errors } = resolveIdentifiers(identifiers, allClients);
+
+        // Auto-select single client when no identifiers provided
+        const resolvedIdentifiers = (!identifiers || identifiers.length === 0)
+          ? (allClients.length === 1 ? [allClients[0].label] : [])
+          : identifiers;
+
+        if (resolvedIdentifiers.length === 0) {
+          if (allClients.length === 0) {
+            return text("No clients connected. Cannot execute script.");
+          }
+          return text(`Multiple clients connected. Please specify which client(s) to target:\n${allClients.map(c => `  - ${c.label}`).join("\n")}`);
+        }
+
+        const { pids, errors } = resolveIdentifiers(resolvedIdentifiers, allClients);
 
         if (errors.length > 0) {
           return text(`Error resolving clients:\n${errors.join("\n")}\n\nAvailable clients: ${allClients.map(c => c.label).join(", ") || "none"}`);
@@ -180,6 +194,37 @@ CLIENT IDENTIFICATION:
 
         const data = await apiPost("/execute", { script, pids });
         if (!data.ok) return text(formatError(data));
+
+        // In generic mode, poll for script output to give instant feedback
+        if (data.mode === "generic") {
+          const afterTs = new Date().toISOString();
+          let capturedOutput: string[] = [];
+          for (let i = 0; i < 4; i++) {
+            await new Promise(r => setTimeout(r, 500));
+            try {
+              const logs = await apiGet("/logs", {
+                after: afterTs,
+                limit: "20",
+                order: "asc",
+              });
+              if (logs.logs && Array.isArray(logs.logs)) {
+                for (const log of logs.logs) {
+                  const line = `[${log.level}] ${log.message}`;
+                  if (!capturedOutput.includes(line)) {
+                    capturedOutput.push(line);
+                  }
+                }
+              }
+              // Stop early if we got error/output logs (not just loader info)
+              if (capturedOutput.some(l => l.startsWith("[output]") || l.startsWith("[error]") || l.startsWith("[warn]"))) break;
+            } catch { /* ignore polling errors */ }
+          }
+
+          if (capturedOutput.length > 0) {
+            data.captured_output = capturedOutput;
+          }
+        }
+
         return text(JSON.stringify(data, null, 2));
       } catch (e: any) {
         return text(formatCatchError(e));
@@ -321,6 +366,7 @@ IMPORTANT: In most cases, you should NOT call this tool. Instead, tell the user 
   loadstring(game:HttpGet("http://localhost:3111/loader-script"))()
 
 This tool exists only for advanced use cases (e.g., inspecting the loader source, saving it to autoexec).
+For autoexec setup, the user just needs to save the one-liner above into a .lua file in their executor's autoexec folder.
 The loader includes the logger — no separate attach_logger step is needed in generic mode.`,
     {},
     async () => {

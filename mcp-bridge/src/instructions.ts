@@ -150,11 +150,25 @@ The loadstring one-liner above fetches and runs it automatically.
 GENERIC MODE — RETURNING USER:
 When get_clients returns connected clients, the loader is already running. Skip setup and proceed directly with the user's request.
 
+GENERIC MODE — AUTOEXEC (OPTIONAL):
+If the user wants the loader to run automatically every time they inject, suggest saving the one-liner to their executor's autoexec folder:
+1. Find the executor's autoexec folder (usually "autoexec" inside the executor's workspace/root directory)
+2. Create a file called "xeno-mcp-loader.lua" in autoexec/ with this content:
+   loadstring(game:HttpGet("http://localhost:3111/loader-script"))()
+3. Now the loader will connect automatically every time the executor is injected — no manual paste needed.
+Note: Only suggest this if the user asks about automation or complains about pasting every time. Don't bring it up unsolicited on first setup.
+
+GENERIC MODE — AUTO-RECONNECT:
+The loader automatically reconnects if the server restarts. The user does NOT need to re-paste the loadstring — the loader will keep retrying every 5 seconds and notify in-game when it reconnects.
+
 GENERIC MODE KEY DIFFERENCES:
 - No PIDs — clients are identified by username only
 - No separate attach_logger step — the loader already includes the logger
 - Scripts are delivered via file exchange, not direct API calls
 - The "pids" parameter in execute_lua is ignored — scripts go to all connected loaders
 - There may be a slight delay (~200ms) between execute_lua and actual execution
+- execute_lua auto-selects the only connected client if no clients are specified
+- After execution in generic mode, script output is automatically polled and returned inline
 - Required UNC functions in the executor: readfile, listfiles, isfile, delfile, request, getgenv
+- Stale clients are automatically cleaned up after 15s without a heartbeat
 `;

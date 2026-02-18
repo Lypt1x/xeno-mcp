@@ -14,6 +14,8 @@ local DONE_DIR      = EXCHANGE_DIR .. "/done"
 local USERNAME      = localPlayer.Name
 local POLL_INTERVAL = 0.2
 local HEARTBEAT_INTERVAL = 5
+local RECONNECT_INTERVAL = 5
+local MAX_RECONNECT_ATTEMPTS = 60  -- 5min at 5s intervals
 
 local function makeHeaders()
     local h = { ["Content-Type"] = "application/json" }
@@ -33,7 +35,7 @@ end
 
 local function send(payload)
     payload.username = USERNAME
-    pcall(function()
+    local ok, err = pcall(function()
         request({
             Url     = INTERNAL_URL,
             Method  = "POST",
@@ -41,6 +43,7 @@ local function send(payload)
             Body    = HttpService:JSONEncode(payload)
         })
     end)
+    return ok
 end
 
 local function sendEvent(event)
@@ -65,17 +68,20 @@ if getgenv and getgenv().__XENO_MCP_GENERIC_LOADER then
 end
 if getgenv then getgenv().__XENO_MCP_GENERIC_LOADER = true end
 
--- check server connectivity
-local serverOk = false
-pcall(function()
-    local resp = request({
-        Url = HEALTH_URL, Method = "GET",
-        Headers = { ["Content-Type"] = "application/json" }
-    })
-    if resp and resp.StatusCode == 200 then serverOk = true end
-end)
+local function checkServer()
+    local ok = false
+    pcall(function()
+        local resp = request({
+            Url = HEALTH_URL, Method = "GET",
+            Headers = { ["Content-Type"] = "application/json" }
+        })
+        if resp and resp.StatusCode == 200 then ok = true end
+    end)
+    return ok
+end
 
-if not serverOk then
+-- check server connectivity
+if not checkServer() then
     notify("Failed to connect to xeno-mcp server.", 8)
     warn("[xeno-mcp] Server unreachable at " .. HEALTH_URL)
     if getgenv then getgenv().__XENO_MCP_GENERIC_LOADER = nil end
@@ -85,7 +91,7 @@ end
 -- check required UNC functions
 local missing = {}
 for _, fn in ipairs({"readfile", "listfiles", "isfile", "delfile"}) do
-    if not getgenv()[fn] then
+    if type(getfenv()[fn]) ~= "function" and type(getgenv()[fn]) ~= "function" then
         table.insert(missing, fn)
     end
 end
@@ -123,11 +129,23 @@ Players.PlayerRemoving:Connect(function(leavingPlayer)
     end
 end)
 
--- heartbeat loop
+-- heartbeat loop with reconnect
 task.spawn(function()
+    local serverLost = false
     while getgenv().__XENO_MCP_GENERIC_LOADER do
-        sendEvent("heartbeat")
-        task.wait(HEARTBEAT_INTERVAL)
+        local ok = send({ event = "heartbeat" })
+        if not ok and not serverLost then
+            serverLost = true
+            notify("Server connection lost — reconnecting...", 8)
+            print("[xeno-mcp] Server connection lost, will retry")
+        elseif ok and serverLost then
+            serverLost = false
+            sendEvent("attached")
+            sendLog("info", "Reconnected to server", "xeno-mcp")
+            notify("Reconnected to server.", 5)
+            print("[xeno-mcp] Reconnected to server")
+        end
+        task.wait(serverLost and RECONNECT_INTERVAL or HEARTBEAT_INTERVAL)
     end
 end)
 
@@ -139,13 +157,9 @@ while getgenv().__XENO_MCP_GENERIC_LOADER do
             if string.sub(filePath, -4) == ".lua" then
                 local readOk, script = pcall(readfile, filePath)
                 if readOk and script then
-                    -- delete before executing to avoid re-execution
                     pcall(delfile, filePath)
-
-                    -- log the script execution
                     sendLog("info", "Executing script: " .. filePath, "loader")
 
-                    -- execute
                     local fn, compileErr = loadstring(script)
                     if fn then
                         local execOk, execErr = pcall(fn)

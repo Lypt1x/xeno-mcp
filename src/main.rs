@@ -6,13 +6,14 @@ mod routes;
 mod xeno;
 
 use actix_web::{web, web::JsonConfig, App, HttpResponse, HttpServer};
+use chrono::Local;
 use clap::Parser;
 use parking_lot::RwLock;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use errors::*;
-use models::{AppState, Args, ServerMode};
+use models::{AppState, Args, LogEntry, ServerMode};
 use routes::{health, internal, logs, xeno as xeno_routes};
 
 #[actix_web::main]
@@ -52,6 +53,43 @@ async fn main() -> std::io::Result<()> {
         http_client: reqwest::Client::new(),
         args: args.clone(),
     });
+
+    // Background task: reap stale generic clients (no heartbeat for 15s)
+    if matches!(args.mode, ServerMode::Generic) {
+        let reaper_state = state.clone();
+        tokio::spawn(async move {
+            let timeout_secs = 15;
+            loop {
+                tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+                let now = Local::now();
+                let mut clients = reaper_state.generic_clients.write();
+                for client in clients.values_mut() {
+                    if client.connected {
+                        let elapsed = now.signed_duration_since(client.last_heartbeat).num_seconds();
+                        if elapsed > timeout_secs {
+                            client.connected = false;
+                            println!("[xeno-mcp] \u{2717} Client '{}' timed out (no heartbeat for {}s)", client.username, elapsed);
+                            let entry = LogEntry {
+                                id: uuid::Uuid::new_v4().to_string(),
+                                timestamp: now,
+                                level: "info".to_string(),
+                                message: format!("Client '{}' disconnected (heartbeat timeout after {}s)", client.username, elapsed),
+                                source: Some("xeno-mcp".to_string()),
+                                pid: None,
+                                username: Some(client.username.clone()),
+                                tags: vec!["internal".to_string(), "disconnected".to_string(), "timeout".to_string(), "generic".to_string()],
+                            };
+                            let mut logs = reaper_state.logs.write();
+                            if logs.len() >= reaper_state.args.max_entries {
+                                logs.remove(0);
+                            }
+                            logs.push(entry);
+                        }
+                    }
+                }
+            }
+        });
+    }
 
     HttpServer::new(move || {
         let json_cfg = JsonConfig::default()
