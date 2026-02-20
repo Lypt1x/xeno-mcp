@@ -651,4 +651,100 @@ WORKFLOW:
       }
     }
   );
+
+  // --- Remote Spy Tools ---
+
+  server.tool(
+    "attach_spy",
+    `Start the remote spy on connected Roblox clients. Intercepts both incoming (server→client) and outgoing (client→server) remote events and functions.
+
+BEHAVIOR:
+- Logs are deduplicated by default: only the FIRST occurrence of each unique remote (by path + direction + method) is logged
+- To get ALL calls for a specific remote, use spy_subscribe after attaching
+- Spy logs are stored with source="remote_spy" — query them with get_logs using source="remote_spy"
+- Filter by direction using tag="in" or tag="out"
+- The spy uses the dual-hook redirect pattern (hookfunction + hookmetamethod) to avoid blocking game traffic
+
+REQUIREMENTS:
+- Only works in generic mode (requires UNC hook functions: hookfunction, hookmetamethod, newcclosure)
+- In Xeno mode, returns an error explaining why it can't work
+- Logger should be attached first so you can see spy status messages
+
+CLEANUP:
+- Use detach_spy to stop the spy and restore all hooks
+- The spy auto-cleans up when the player leaves the game`,
+    {
+      pids: z.array(z.string()).optional().describe('Client identifiers (Xeno mode only). In generic mode, omit this — the spy script is sent via the exchange directory.'),
+    },
+    async ({ pids }) => {
+      try {
+        const data = await apiPost("/spy/attach", { pids: pids || [] });
+        if (!data.ok) return text(formatError(data));
+        return text(JSON.stringify(data, null, 2));
+      } catch (e: any) {
+        return text(formatCatchError(e));
+      }
+    }
+  );
+
+  server.tool(
+    "detach_spy",
+    `Stop the remote spy and restore all hooks. This disconnects all listeners and restores the original __namecall, FireServer, and InvokeServer functions.
+
+After detaching, no more spy logs will be generated. Server-side spy state (subscriptions, tracked clients) is also cleared.`,
+    {
+      pids: z.array(z.string()).optional().describe('Client identifiers (Xeno mode only). In generic mode, omit this.'),
+    },
+    async ({ pids }) => {
+      try {
+        const data = await apiPost("/spy/detach", { pids: pids || [] });
+        if (!data.ok) return text(formatError(data));
+        return text(JSON.stringify(data, null, 2));
+      } catch (e: any) {
+        return text(formatCatchError(e));
+      }
+    }
+  );
+
+  server.tool(
+    "spy_subscribe",
+    `Subscribe to a specific remote path for full logging (bypasses dedup). By default, the spy only logs the first occurrence of each remote. Subscribing to a remote path makes the spy log EVERY call to that remote, including all arguments.
+
+Use this when you need to track the data being sent to or received from a specific remote over time.
+
+Supports partial matching: subscribing to "Remotes" will match "Remotes.SetAFK", "Remotes.BuyItem", etc.
+
+Example paths: "ReplicatedStorage.Remotes.SetAFK", "ReplicatedStorage.TS.GeneratedNetworkRemotes"`,
+    {
+      path: z.string().describe('The remote path (or partial path) to subscribe to. Supports partial matching.'),
+      pids: z.array(z.string()).optional().describe('Client identifiers (Xeno mode only).'),
+    },
+    async ({ path, pids }) => {
+      try {
+        const data = await apiPost("/spy/subscribe", { path, pids: pids || [] });
+        if (!data.ok) return text(formatError(data));
+        return text(JSON.stringify(data, null, 2));
+      } catch (e: any) {
+        return text(formatCatchError(e));
+      }
+    }
+  );
+
+  server.tool(
+    "spy_unsubscribe",
+    `Unsubscribe from a remote path, returning it to dedup-only mode. After unsubscribing, only the first occurrence of calls to this remote will be logged again.`,
+    {
+      path: z.string().describe('The remote path to unsubscribe from.'),
+      pids: z.array(z.string()).optional().describe('Client identifiers (Xeno mode only).'),
+    },
+    async ({ path, pids }) => {
+      try {
+        const data = await apiPost("/spy/unsubscribe", { path, pids: pids || [] });
+        if (!data.ok) return text(formatError(data));
+        return text(JSON.stringify(data, null, 2));
+      } catch (e: any) {
+        return text(formatCatchError(e));
+      }
+    }
+  );
 }

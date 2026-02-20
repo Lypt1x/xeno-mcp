@@ -25,6 +25,7 @@ Supports two modes:
 - [Setup — Generic Mode](#setup--generic-mode)
 - [MCP Configuration](#mcp-configuration)
 - [Tools](#tools)
+- [Remote Spy](#remote-spy)
 - [Logs & Pagination](#logs--pagination)
 - [HTTP API](#http-api)
 - [Server Flags](#server-flags)
@@ -264,6 +265,67 @@ The MCP server exposes these tools to the AI agent:
 
 The agent enforces safety rules: unverified scripts require explicit user confirmation, obfuscated scripts trigger warnings, and key systems are flagged.
 
+### Remote Spy Tools
+
+| Tool | Description |
+|------|-------------|
+| `attach_spy` | Start the remote spy — hooks FireServer, InvokeServer, and OnClientEvent |
+| `detach_spy` | Stop the spy and restore all hooks |
+| `spy_subscribe` | Subscribe to a remote path for full logging (bypasses dedup) |
+| `spy_unsubscribe` | Unsubscribe from a remote path (back to dedup-only) |
+
+See [Remote Spy](#remote-spy) for details.
+
+---
+
+## Remote Spy
+
+The remote spy intercepts Roblox remote calls (both incoming and outgoing) and logs them through the existing log system. It uses the dual-hook redirect pattern to avoid blocking game traffic.
+
+### Requirements
+
+- **Generic mode only** — requires UNC hook functions (`hookfunction`, `hookmetamethod`, `newcclosure`, etc.) that are not available in Xeno mode
+- In Xeno mode, the spy tools return an error explaining the UNC requirement
+- Logger should be attached first for status messages
+
+### How It Works
+
+1. `attach_spy` injects a Lua script that hooks `FireServer`, `InvokeServer` (via `hookfunction`) and `__namecall` (via `hookmetamethod`)
+2. The `__namecall` hook redirects remote calls to the `hookfunction`'d versions instead of calling `old()` directly — this is the key pattern that avoids blocking game traffic
+3. Passive `OnClientEvent:Connect()` listeners capture incoming server→client events
+4. All intercepted calls are sent to `POST /internal` with `event: "spy"` and stored as log entries with `source: "remote_spy"`
+
+### Deduplication
+
+By default, the spy **deduplicates** — only the first occurrence of each unique remote (by path + direction + method) is logged. This prevents flooding the log with 60+/frame calls in busy games.
+
+To get **all calls** for a specific remote (including args), use `spy_subscribe`:
+
+```
+spy_subscribe("ReplicatedStorage.Remotes.SetAFK")
+```
+
+This makes the spy log every call to remotes matching that path. Supports partial matching — subscribing to `"Remotes"` matches all remotes under that path.
+
+Use `spy_unsubscribe` to return a remote to dedup-only mode.
+
+### Querying Spy Logs
+
+Spy logs use `source: "remote_spy"` and tags `["spy", "in"|"out"]`:
+
+```
+get_logs(source="remote_spy")              — all spy logs
+get_logs(source="remote_spy", tag="out")   — outgoing calls only
+get_logs(source="remote_spy", tag="in")    — incoming calls only
+get_logs(source="remote_spy", search="SetAFK") — specific remote
+```
+
+### Cleanup
+
+- `detach_spy` sends a disconnect script that restores all hooks and clears listeners
+- The spy auto-cleans up when the player leaves the game
+- The spy guards against double-injection: re-attaching disconnects the previous spy first
+
 ---
 
 ## Logs & Pagination
@@ -331,6 +393,11 @@ For direct integration without MCP:
 | `POST` | `/internal` | Client → server event channel (used by injected scripts) |
 | `GET` | `/logs` | Query logs with filters (see [Logs & Pagination](#logs--pagination)) |
 | `DELETE` | `/logs` | Clear all logs |
+| `POST` | `/spy/attach` | Start remote spy on client (generic mode only) |
+| `POST` | `/spy/detach` | Stop remote spy and restore hooks |
+| `POST` | `/spy/subscribe` | Subscribe to a remote path: `{ "path": "..." }` |
+| `POST` | `/spy/unsubscribe` | Unsubscribe from a remote path: `{ "path": "..." }` |
+| `GET` | `/spy/status` | Spy status: active clients and subscriptions |
 
 All POST/DELETE endpoints require the `X-Xeno-Secret` header when `--secret` is set.
 

@@ -3,6 +3,7 @@ mod loader;
 mod logger;
 mod models;
 mod routes;
+mod spy;
 mod xeno;
 
 use actix_web::{web, web::JsonConfig, App, HttpResponse, HttpServer};
@@ -14,7 +15,7 @@ use std::sync::Arc;
 
 use errors::*;
 use models::{AppState, Args, LogEntry, ServerMode};
-use routes::{health, internal, logs, xeno as xeno_routes};
+use routes::{health, internal, logs, spy as spy_routes, xeno as xeno_routes};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -44,12 +45,17 @@ async fn main() -> std::io::Result<()> {
     println!("  GET  /clients        POST /execute");
     println!("  POST /attach-logger  GET  /loader-script");
     println!("  GET  /logs           DEL  /logs");
+    println!("  POST /spy/attach     POST /spy/detach");
+    println!("  POST /spy/subscribe  POST /spy/unsubscribe");
+    println!("  GET  /spy/status");
     println!();
 
     let state = Arc::new(AppState {
         logs: RwLock::new(Vec::with_capacity(args.max_entries)),
         logger_pids: RwLock::new(HashSet::new()),
         generic_clients: RwLock::new(HashMap::new()),
+        spy_clients: RwLock::new(HashSet::new()),
+        spy_subscriptions: RwLock::new(HashMap::new()),
         http_client: reqwest::Client::new(),
         args: args.clone(),
     });
@@ -165,6 +171,26 @@ async fn main() -> std::io::Result<()> {
                     .route(web::get().to(logs::get_logs))
                     .route(web::delete().to(logs::delete_logs))
                     .default_service(web::to(logs_method_not_allowed)),
+            )
+            .service(
+                web::resource("/spy/attach")
+                    .route(web::post().to(spy_routes::post_attach_spy))
+            )
+            .service(
+                web::resource("/spy/detach")
+                    .route(web::post().to(spy_routes::post_detach_spy))
+            )
+            .service(
+                web::resource("/spy/subscribe")
+                    .route(web::post().to(spy_routes::post_spy_subscribe))
+            )
+            .service(
+                web::resource("/spy/unsubscribe")
+                    .route(web::post().to(spy_routes::post_spy_unsubscribe))
+            )
+            .service(
+                web::resource("/spy/status")
+                    .route(web::get().to(spy_routes::get_spy_status))
             )
             .default_service(web::to(not_found_handler))
     })
