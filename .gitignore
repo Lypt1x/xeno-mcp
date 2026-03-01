@@ -1,5 +1,6 @@
 /target
 /target_release_verify
+/storage
 mcp-bridge/node_modules
 mcp-bridge/dist
 .github
