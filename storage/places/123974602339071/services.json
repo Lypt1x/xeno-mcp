@@ -1,0 +1,1315 @@
+[
+  {
+    "child_count": 19,
+    "children": [
+      {
+        "class_name": "Camera",
+        "name": "Camera"
+      },
+      {
+        "class_name": "Folder",
+        "name": "spawn"
+      },
+      {
+        "class_name": "Folder",
+        "name": "Folder"
+      },
+      {
+        "class_name": "Model",
+        "name": "Dummy_Trowler"
+      },
+      {
+        "class_name": "Part",
+        "name": "Baseplate"
+      },
+      {
+        "class_name": "Terrain",
+        "name": "Terrain"
+      },
+      {
+        "class_name": "Model",
+        "name": "Icantfr"
+      },
+      {
+        "class_name": "Model",
+        "name": "kdowk_123"
+      },
+      {
+        "class_name": "Model",
+        "name": "deathfxs"
+      },
+      {
+        "class_name": "Model",
+        "name": "rilhmkrn"
+      },
+      {
+        "class_name": "Model",
+        "name": "StasKrutojYT"
+      },
+      {
+        "class_name": "Model",
+        "name": "dudu12ce"
+      },
+      {
+        "class_name": "Model",
+        "name": "1nOnlyJaven"
+      },
+      {
+        "class_name": "Model",
+        "name": "noah22kkh"
+      },
+      {
+        "class_name": "Model",
+        "name": "LegiunMars"
+      },
+      {
+        "class_name": "Model",
+        "name": "Makari_MM0129"
+      },
+      {
+        "class_name": "Model",
+        "name": "Lypt1x"
+      },
+      {
+        "class_name": "Model",
+        "name": "Rustam575385"
+      },
+      {
+        "class_name": "Model",
+        "name": "gaspider26"
+      }
+    ],
+    "class_name": "Workspace",
+    "name": "Workspace"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "RunService",
+    "name": "Run Service"
+  },
+  {
+    "child_count": 2,
+    "children": [
+      {
+        "class_name": "ScreenshotHud",
+        "name": "ScreenshotHud"
+      },
+      {
+        "class_name": "LocalizationTable",
+        "name": "FoundationLocalization"
+      }
+    ],
+    "class_name": "GuiService",
+    "name": "GuiService"
+  },
+  {
+    "child_count": 7,
+    "children": [
+      {
+        "class_name": "StatsItem",
+        "name": "PerformanceStats"
+      },
+      {
+        "class_name": "StatsItem",
+        "name": "Workspace"
+      },
+      {
+        "class_name": "StatsItem",
+        "name": "Sound"
+      },
+      {
+        "class_name": "StatsItem",
+        "name": "Luau"
+      },
+      {
+        "class_name": "StatsItem",
+        "name": "ChangeHistory"
+      },
+      {
+        "class_name": "StatsItem",
+        "name": "FrameRateManager"
+      },
+      {
+        "class_name": "StatsItem",
+        "name": "Network"
+      }
+    ],
+    "class_name": "Stats",
+    "name": "Stats"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "TimerService",
+    "name": "TimerService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "SoundService",
+    "name": "SoundService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "VideoCaptureService",
+    "name": "VideoCaptureService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "LogService",
+    "name": "LogService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "MicroProfilerService",
+    "name": "MicroProfilerService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "ContentProvider",
+    "name": "ContentProvider"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "KeyframeSequenceProvider",
+    "name": "KeyframeSequenceProvider"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "AnimationClipProvider",
+    "name": "AnimationClipProvider"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "Chat",
+    "name": "Chat"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "MarketplaceService",
+    "name": "MarketplaceService"
+  },
+  {
+    "child_count": 13,
+    "children": [
+      {
+        "class_name": "Player",
+        "name": "Lypt1x"
+      },
+      {
+        "class_name": "Player",
+        "name": "rilhmkrn"
+      },
+      {
+        "class_name": "Player",
+        "name": "1nOnlyJaven"
+      },
+      {
+        "class_name": "Player",
+        "name": "StasKrutojYT"
+      },
+      {
+        "class_name": "Player",
+        "name": "Icantfr"
+      },
+      {
+        "class_name": "Player",
+        "name": "Rustam575385"
+      },
+      {
+        "class_name": "Player",
+        "name": "dudu12ce"
+      },
+      {
+        "class_name": "Player",
+        "name": "Makari_MM0129"
+      },
+      {
+        "class_name": "Player",
+        "name": "noah22kkh"
+      },
+      {
+        "class_name": "Player",
+        "name": "deathfxs"
+      },
+      {
+        "class_name": "Player",
+        "name": "kdowk_123"
+      },
+      {
+        "class_name": "Player",
+        "name": "LegiunMars"
+      },
+      {
+        "class_name": "Player",
+        "name": "gaspider26"
+      }
+    ],
+    "class_name": "Players",
+    "name": "Players"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "PointsService",
+    "name": "PointsService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "NotificationService",
+    "name": "NotificationService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "ReplicatedFirst",
+    "name": "ReplicatedFirst"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "HttpRbxApiService",
+    "name": "HttpRbxApiService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "TweenService",
+    "name": "TweenService"
+  },
+  {
+    "child_count": 1,
+    "children": [
+      {
+        "class_name": "Folder",
+        "name": "AssistantMaterials"
+      }
+    ],
+    "class_name": "MaterialService",
+    "name": "MaterialService"
+  },
+  {
+    "child_count": 6,
+    "children": [
+      {
+        "class_name": "ChatWindowConfiguration",
+        "name": "ChatWindowConfiguration"
+      },
+      {
+        "class_name": "ChatInputBarConfiguration",
+        "name": "ChatInputBarConfiguration"
+      },
+      {
+        "class_name": "BubbleChatConfiguration",
+        "name": "BubbleChatConfiguration"
+      },
+      {
+        "class_name": "ChannelTabsConfiguration",
+        "name": "ChannelTabsConfiguration"
+      },
+      {
+        "class_name": "Folder",
+        "name": "TextChannels"
+      },
+      {
+        "class_name": "Folder",
+        "name": "TextChatCommands"
+      }
+    ],
+    "class_name": "TextChatService",
+    "name": "TextChatService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "TextService",
+    "name": "TextService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "PlayerEmulatorService",
+    "name": "PlayerEmulatorService"
+  },
+  {
+    "child_count": 3,
+    "children": [
+      {
+        "class_name": "ModuleScript",
+        "name": "_GlobalPackageVersions"
+      },
+      {
+        "class_name": "Folder",
+        "name": "Packages"
+      },
+      {
+        "class_name": "Folder",
+        "name": "Workspace"
+      }
+    ],
+    "class_name": "CorePackages",
+    "name": "CorePackages"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "StudioData",
+    "name": "StudioData"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "SharedTableRegistry",
+    "name": "SharedTableRegistry"
+  },
+  {
+    "child_count": 2,
+    "children": [
+      {
+        "class_name": "StarterPlayerScripts",
+        "name": "StarterPlayerScripts"
+      },
+      {
+        "class_name": "StarterCharacterScripts",
+        "name": "StarterCharacterScripts"
+      }
+    ],
+    "class_name": "StarterPlayer",
+    "name": "StarterPlayer"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "StarterPack",
+    "name": "StarterPack"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "StarterGui",
+    "name": "StarterGui"
+  },
+  {
+    "child_count": 42,
+    "children": [
+      {
+        "class_name": "ScreenGui",
+        "name": "RobloxGui"
+      },
+      {
+        "class_name": "LocalizationTable",
+        "name": "CoreScriptLocalization"
+      },
+      {
+        "class_name": "ScreenGui",
+        "name": "HeadsetDisconnectedDialog"
+      },
+      {
+        "class_name": "Folder",
+        "name": "TopBarApp"
+      },
+      {
+        "class_name": "ScreenGui",
+        "name": "RobloxPromptGui"
+      },
+      {
+        "class_name": "ScreenGui",
+        "name": "ScreenshotsCarousel"
+      },
+      {
+        "class_name": "ScreenGui",
+        "name": "CaptureManager"
+      },
+      {
+        "class_name": "ScreenGui",
+        "name": "CaptureOverlay"
+      },
+      {
+        "class_name": "ScreenGui",
+        "name": "RobloxNetworkPauseNotification"
+      },
+      {
+        "class_name": "ScreenGui",
+        "name": "_FullscreenTestGui"
+      },
+      {
+        "class_name": "ScreenGui",
+        "name": "_DeviceTestGui"
+      },
+      {
+        "class_name": "ScreenGui",
+        "name": "PlayerList"
+      },
+      {
+        "class_name": "ScreenGui",
+        "name": "InExperienceInterventionApp"
+      },
+      {
+        "class_name": "Folder",
+        "name": "ToastNotification"
+      },
+      {
+        "class_name": "ScreenGui",
+        "name": "TeleportEffectGui"
+      },
+      {
+        "class_name": "Folder",
+        "name": "AdGuiInteractivityControls"
+      },
+      {
+        "class_name": "ScreenGui",
+        "name": "RewardedVideoAdPlayer"
+      },
+      {
+        "class_name": "Folder",
+        "name": "GameInvite"
+      },
+      {
+        "class_name": "Folder",
+        "name": "BulkPurchaseApp"
+      },
+      {
+        "class_name": "Folder",
+        "name": "CancelSubscriptionApp"
+      }
+    ],
+    "class_name": "CoreGui",
+    "name": "CoreGui"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "LocalizationService",
+    "name": "LocalizationService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "PolicyService",
+    "name": "PolicyService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "TeleportService",
+    "name": "Teleport Service"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "JointsService",
+    "name": "JointsService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "CollectionService",
+    "name": "CollectionService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "PhysicsService",
+    "name": "PhysicsService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "BadgeService",
+    "name": "BadgeService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "FriendService",
+    "name": "FriendService"
+  },
+  {
+    "child_count": 1,
+    "children": [
+      {
+        "class_name": "StringValue",
+        "name": "InsertionHash"
+      }
+    ],
+    "class_name": "InsertService",
+    "name": "InsertService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "GamePassService",
+    "name": "GamePassService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "Debris",
+    "name": "Debris"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "CookiesService",
+    "name": "CookiesService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "Selection",
+    "name": "Selection"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "UserInputService",
+    "name": "UserInputService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "KeyboardService",
+    "name": "KeyboardService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "MouseService",
+    "name": "MouseService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "VRService",
+    "name": "VRService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "ContextActionService",
+    "name": "ContextActionService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "ScriptService",
+    "name": "ScriptService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "AssetService",
+    "name": "AssetService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "TouchInputService",
+    "name": "TouchInputService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "BrowserService",
+    "name": "BrowserService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "CaptureService",
+    "name": "CaptureService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "AppStorageService",
+    "name": "AppStorageService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "AnalyticsService",
+    "name": "AnalyticsService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "HeatmapService",
+    "name": "HeatmapService"
+  },
+  {
+    "child_count": 1,
+    "children": [
+      {
+        "class_name": "AvatarRules",
+        "name": "DefaultAvatarRules"
+      }
+    ],
+    "class_name": "AvatarSettings",
+    "name": "AvatarSettings"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "SlimContentProvider",
+    "name": "SlimContentProvider"
+  },
+  {
+    "child_count": 10,
+    "children": [
+      {
+        "class_name": "CoreScript",
+        "name": "StarterScript"
+      },
+      {
+        "class_name": "CoreScript",
+        "name": "CoreScripts/DefaultListenerLocation"
+      },
+      {
+        "class_name": "CoreScript",
+        "name": "CoreScripts/ChatEmoteUsage"
+      },
+      {
+        "class_name": "CoreScript",
+        "name": "CoreScripts/ToastNotificationGUI"
+      },
+      {
+        "class_name": "CoreScript",
+        "name": "CoreScripts/FacialAnimationStreaming"
+      },
+      {
+        "class_name": "CoreScript",
+        "name": "CoreScripts/AvatarMood"
+      },
+      {
+        "class_name": "CoreScript",
+        "name": "CoreScripts/CharacterNameHandler"
+      },
+      {
+        "class_name": "CoreScript",
+        "name": "CoreScripts/CoreScriptsGlobalEffects"
+      },
+      {
+        "class_name": "CoreScript",
+        "name": "CoreScripts/GameInviteModalGUI"
+      },
+      {
+        "class_name": "CoreScript",
+        "name": "CoreScripts/ExperienceNotifications"
+      }
+    ],
+    "class_name": "ScriptContext",
+    "name": "Script Context"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "RbxAnalyticsService",
+    "name": "RbxAnalyticsService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "TelemetryService",
+    "name": "TelemetryService"
+  },
+  {
+    "child_count": 1,
+    "children": [
+      {
+        "class_name": "Sky",
+        "name": "Sky"
+      }
+    ],
+    "class_name": "Lighting",
+    "name": "Lighting"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "ThirdPartyUserService",
+    "name": "ThirdPartyUserService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "PlatformFriendsService",
+    "name": "PlatformFriendsService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "PlatformCloudStorageService",
+    "name": "PlatformCloudStorageService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "GenericChallengeService",
+    "name": "GenericChallengeService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "ScriptRegistrationService",
+    "name": "ScriptRegistrationService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "RuntimeScriptService",
+    "name": "RuntimeScriptService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "HttpService",
+    "name": "HttpService"
+  },
+  {
+    "child_count": 31,
+    "children": [
+      {
+        "class_name": "StringValue",
+        "name": "LeaderstatsOrder"
+      },
+      {
+        "class_name": "RemoteEvent",
+        "name": "ReferredPlayerJoin"
+      },
+      {
+        "class_name": "RemoteEvent",
+        "name": "ReceiveLikelySpeakingUsers"
+      },
+      {
+        "class_name": "UnreliableRemoteEvent",
+        "name": "SendLikelySpeakingUsers"
+      },
+      {
+        "class_name": "RemoteEvent",
+        "name": "RequestDeviceCameraOrientationCapability"
+      },
+      {
+        "class_name": "RemoteEvent",
+        "name": "UpdateCurrentCall"
+      },
+      {
+        "class_name": "RemoteEvent",
+        "name": "ContactListIrisInviteTeleport"
+      },
+      {
+        "class_name": "RemoteEvent",
+        "name": "ContactListInvokeIrisInvite"
+      },
+      {
+        "class_name": "RemoteEvent",
+        "name": "SetDialogInUse"
+      },
+      {
+        "class_name": "RemoteEvent",
+        "name": "ServerSideBulkPurchaseEvent"
+      },
+      {
+        "class_name": "StringValue",
+        "name": "DeathType"
+      },
+      {
+        "class_name": "RemoteEvent",
+        "name": "CreateOrJoinParty"
+      },
+      {
+        "class_name": "RemoteEvent",
+        "name": "ShowFriendJoinedPlayerToast"
+      },
+      {
+        "class_name": "RemoteEvent",
+        "name": "ShowPlayerJoinedFriendsToast"
+      },
+      {
+        "class_name": "RemoteEvent",
+        "name": "UpdatePlayerProfileSettings"
+      },
+      {
+        "class_name": "RemoteEvent",
+        "name": "RequestPlayerProfileSettings"
+      },
+      {
+        "class_name": "RemoteEvent",
+        "name": "SendPlayerProfileSettings"
+      },
+      {
+        "class_name": "RemoteEvent",
+        "name": "UpdateLocalPlayerBlockList"
+      },
+      {
+        "class_name": "RemoteEvent",
+        "name": "SendPlayerBlockList"
+      },
+      {
+        "class_name": "RemoteEvent",
+        "name": "NewPlayerCanManageDetails"
+      }
+    ],
+    "class_name": "RobloxReplicatedStorage",
+    "name": "RobloxReplicatedStorage"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "MessageBusService",
+    "name": "MessageBusService"
+  },
+  {
+    "child_count": 6,
+    "children": [
+      {
+        "class_name": "MemStorageConnection",
+        "name": "MemStorageConnection"
+      },
+      {
+        "class_name": "MemStorageConnection",
+        "name": "MemStorageConnection"
+      },
+      {
+        "class_name": "MemStorageConnection",
+        "name": "MemStorageConnection"
+      },
+      {
+        "class_name": "MemStorageConnection",
+        "name": "MemStorageConnection"
+      },
+      {
+        "class_name": "MemStorageConnection",
+        "name": "MemStorageConnection"
+      },
+      {
+        "class_name": "MemStorageConnection",
+        "name": "MemStorageConnection"
+      }
+    ],
+    "class_name": "MemStorageService",
+    "name": "MemStorageService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "IXPService",
+    "name": "IXPService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "ChangeHistoryService",
+    "name": "ChangeHistoryService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "EventIngestService",
+    "name": "EventIngestService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "ExperienceStateCaptureService",
+    "name": "ExperienceStateCaptureService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "ExperienceService",
+    "name": "ExperienceService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "LinkingService",
+    "name": "LinkingService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "StylingService",
+    "name": "StylingService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "HapticService",
+    "name": "HapticService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "GamepadService",
+    "name": "GamepadService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "SessionService",
+    "name": "SessionService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "WebViewService",
+    "name": "WebViewService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "FacialAgeEstimationService",
+    "name": "FacialAgeEstimationService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "VoiceChatService",
+    "name": "VoiceChatService"
+  },
+  {
+    "child_count": 6,
+    "children": [
+      {
+        "class_name": "RemoteEvent",
+        "name": "01_server"
+      },
+      {
+        "class_name": "Folder",
+        "name": "bar"
+      },
+      {
+        "class_name": "RemoteFunction",
+        "name": "02_client"
+      },
+      {
+        "class_name": "StringValue",
+        "name": "game"
+      },
+      {
+        "class_name": "RemoteFunction",
+        "name": "03_client"
+      },
+      {
+        "class_name": "ObjectValue",
+        "name": "TopbarPlusReference"
+      }
+    ],
+    "class_name": "ReplicatedStorage",
+    "name": "ReplicatedStorage"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "AdService",
+    "name": "AdService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "AvatarChatService",
+    "name": "AvatarChatService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "AudioFocusService",
+    "name": "AudioFocusService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "SocialService",
+    "name": "SocialService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "UserService",
+    "name": "UserService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "AppLifecycleObserverService",
+    "name": "AppLifecycleObserverService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "UIDragDetectorService",
+    "name": "UIDragDetectorService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "TextBoxService",
+    "name": "TextBoxService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "MeshContentProvider",
+    "name": "MeshContentProvider"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "SolidModelContentProvider",
+    "name": "SolidModelContentProvider"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "HSRDataContentProvider",
+    "name": "HSRDataContentProvider"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "VideoService",
+    "name": "VideoService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "",
+    "name": "FilteredSelection"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "",
+    "name": "FilteredSelection"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "",
+    "name": "FilteredSelection"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "",
+    "name": "FilteredSelection"
+  },
+  {
+    "child_count": 1,
+    "children": [
+      {
+        "class_name": "HumanoidController",
+        "name": "Instance"
+      }
+    ],
+    "class_name": "ControllerService",
+    "name": "ControllerService"
+  },
+  {
+    "child_count": 1,
+    "children": [
+      {
+        "class_name": "ClientReplicator",
+        "name": "ClientReplicator"
+      }
+    ],
+    "class_name": "NetworkClient",
+    "name": "NetworkClient"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "Visit",
+    "name": "Visit"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "GuidRegistryService",
+    "name": "GuidRegistryService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "PermissionsService",
+    "name": "PermissionsService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "Teams",
+    "name": "Teams"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "FeatureRestrictionManager",
+    "name": "FeatureRestrictionManager"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "ExperienceAuthService",
+    "name": "ExperienceAuthService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "CommerceService",
+    "name": "CommerceService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "RecommendationService",
+    "name": "RecommendationService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "TestService",
+    "name": "TestService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "SafetyService",
+    "name": "SafetyService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "ProximityPromptService",
+    "name": "ProximityPromptService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "AvatarCreationService",
+    "name": "AvatarCreationService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "GenerationService",
+    "name": "GenerationService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "RobloxServerStorage",
+    "name": "RobloxServerStorage"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "ScriptProfilerService",
+    "name": "ScriptProfilerService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "HeapProfilerService",
+    "name": "HeapProfilerService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "ModerationService",
+    "name": "ModerationService"
+  },
+  {
+    "child_count": 1,
+    "children": [
+      {
+        "class_name": "TrackerLodController",
+        "name": "Instance"
+      }
+    ],
+    "class_name": "FaceAnimatorService",
+    "name": "FaceAnimatorService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "GroupService",
+    "name": "GroupService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "CreatorStoreService",
+    "name": "CreatorStoreService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "AvatarEditorService",
+    "name": "AvatarEditorService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "RtMessagingService",
+    "name": "RtMessagingService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "ExperienceNotificationService",
+    "name": "ExperienceNotificationService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "AchievementService",
+    "name": "AchievementService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "",
+    "name": "FilteredSelection"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "SpawnerService",
+    "name": "SpawnerService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "PathfindingService",
+    "name": "Instance"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "CoreScriptSyncService",
+    "name": "Instance"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "FileManagerService",
+    "name": "FileManagerService"
+  },
+  {
+    "child_count": 0,
+    "children": [],
+    "class_name": "WebSocketService",
+    "name": "WebSocketService"
+  }
+]

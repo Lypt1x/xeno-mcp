@@ -188,7 +188,7 @@ if hasScope("scripts") then
             local svc = getService(serviceName)
             if svc then
                 for _, inst in ipairs(svc:GetDescendants()) do
-                    if inst:IsA("LocalScript") or inst:IsA("ModuleScript") then
+                    if inst:IsA("LocalScript") or inst:IsA("ModuleScript") or inst:IsA("Script") then
                         local entry = {
                             path = inst:GetFullName(),
                             class_name = inst.ClassName,

@@ -1,0 +1,74 @@
+[
+  {
+    "class_name": "BindableFunction",
+    "path": "Workspace.Icantfr.Animate.PlayEmote"
+  },
+  {
+    "class_name": "BindableFunction",
+    "path": "Workspace.kdowk_123.Animate.PlayEmote"
+  },
+  {
+    "class_name": "BindableFunction",
+    "path": "Workspace.deathfxs.Animate.PlayEmote"
+  },
+  {
+    "class_name": "BindableFunction",
+    "path": "Workspace.rilhmkrn.Animate.PlayEmote"
+  },
+  {
+    "class_name": "BindableFunction",
+    "path": "Workspace.StasKrutojYT.Animate.PlayEmote"
+  },
+  {
+    "class_name": "BindableFunction",
+    "path": "Workspace.dudu12ce.Animate.PlayEmote"
+  },
+  {
+    "class_name": "BindableFunction",
+    "path": "Workspace.1nOnlyJaven.Animate.PlayEmote"
+  },
+  {
+    "class_name": "BindableFunction",
+    "path": "Workspace.noah22kkh.Animate.PlayEmote"
+  },
+  {
+    "class_name": "BindableFunction",
+    "path": "Workspace.LegiunMars.Animate.PlayEmote"
+  },
+  {
+    "class_name": "BindableFunction",
+    "path": "Workspace.Makari_MM0129.Animate.PlayEmote"
+  },
+  {
+    "class_name": "BindableFunction",
+    "path": "Workspace.Lypt1x.Animate.PlayEmote"
+  },
+  {
+    "class_name": "BindableFunction",
+    "path": "Workspace.gaspider26.Animate.PlayEmote"
+  },
+  {
+    "class_name": "BindableFunction",
+    "path": "Workspace.Rustam575385.Animate.PlayEmote"
+  },
+  {
+    "class_name": "BindableFunction",
+    "path": "Workspace.killer_ail2.Animate.PlayEmote"
+  },
+  {
+    "class_name": "BindableFunction",
+    "path": "Workspace.alex5001005.Animate.PlayEmote"
+  },
+  {
+    "class_name": "RemoteEvent",
+    "path": "ReplicatedStorage.01_server"
+  },
+  {
+    "class_name": "RemoteFunction",
+    "path": "ReplicatedStorage.02_client"
+  },
+  {
+    "class_name": "RemoteFunction",
+    "path": "ReplicatedStorage.03_client"
+  }
+]

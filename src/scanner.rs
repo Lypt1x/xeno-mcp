@@ -582,6 +582,33 @@ pub fn filter_entries(data: &serde_json::Value, query: &GameQuery) -> serde_json
     serde_json::json!(filtered)
 }
 
+/// Merge full source from scripts_full.json into filtered script entries
+pub fn merge_source_into_scripts(scripts: &mut serde_json::Value, full_data: &serde_json::Value) {
+    let scripts_arr = match scripts.as_array_mut() {
+        Some(arr) => arr,
+        None => return,
+    };
+    let full_arr = match full_data.as_array() {
+        Some(arr) => arr,
+        None => return,
+    };
+
+    for script in scripts_arr.iter_mut() {
+        let path = script.get("path").and_then(|v| v.as_str()).unwrap_or("");
+        if path.is_empty() { continue; }
+
+        if let Some(full) = full_arr.iter().find(|f| {
+            f.get("path").and_then(|v| v.as_str()).unwrap_or("") == path
+        }) {
+            if let Some(source) = full.get("source") {
+                if let Some(obj) = script.as_object_mut() {
+                    obj.insert("source".to_string(), source.clone());
+                }
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

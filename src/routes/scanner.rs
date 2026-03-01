@@ -202,15 +202,11 @@ pub async fn get_game_scope(
     let storage = std::path::Path::new(&state.args.storage_dir);
     let q = query.into_inner();
 
+    // For scripts, always filter against outlines first (scripts.json has outline data).
+    // When include_source is requested, merge full source into matching results.
     let filename = match scope.as_str() {
         "tree" => "tree.json",
-        "scripts" => {
-            if q.include_source.unwrap_or(false) {
-                "scripts_full.json"
-            } else {
-                "scripts.json"
-            }
-        }
+        "scripts" => "scripts.json",
         "remotes" => "remotes.json",
         "properties" => "properties.json",
         "services" => "services.json",
@@ -225,20 +221,17 @@ pub async fn get_game_scope(
 
     match scanner::load_file(storage, place_id, filename) {
         Ok(data) => {
-            // If include_source is true and we have full sources, merge them with outlines
-            let filtered = if scope == "scripts" && q.include_source.unwrap_or(false) {
-                // When requesting source, we loaded scripts_full.json.
-                // The caller wants full source for scripts matching their filters.
-                // If there's a path filter, only include matching scripts' source.
-                if q.path.is_some() || q.search.is_some() || q.class.is_some() {
-                    scanner::filter_scripts(&data, &q)
-                } else {
-                    data
-                }
-            } else if scope == "tree" {
+            let filtered = if scope == "tree" {
                 scanner::filter_tree(&data, &q)
             } else if scope == "scripts" {
-                scanner::filter_scripts(&data, &q)
+                let mut result = scanner::filter_scripts(&data, &q);
+                // Merge full source into matching scripts if requested
+                if q.include_source.unwrap_or(false) {
+                    if let Ok(full_data) = scanner::load_file(storage, place_id, "scripts_full.json") {
+                        scanner::merge_source_into_scripts(&mut result, &full_data);
+                    }
+                }
+                result
             } else {
                 scanner::filter_entries(&data, &q)
             };
