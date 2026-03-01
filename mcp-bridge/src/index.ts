@@ -45,7 +45,10 @@ async function ensureHttpServer(): Promise<void> {
   const executorExchangeDir = process.env.GENERIC_EXECUTOR_RELATIVE_DIR;
   if (executorExchangeDir) args.push("--executor-exchange-dir", executorExchangeDir);
 
+  const repoRoot = resolve(bridgeDir, "..", "..");
+
   const child = spawn(exe, args, {
+    cwd: repoRoot,
     detached: true,
     stdio: "ignore",
     windowsHide: true,
