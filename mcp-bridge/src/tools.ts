@@ -747,4 +747,439 @@ Example paths: "ReplicatedStorage.Remotes.SetAFK", "ReplicatedStorage.TS.Generat
       }
     }
   );
+
+  // ── Game Scanner Tools ─────────────────────────────────────────────────
+
+  server.tool(
+    "scan_game",
+    `Scan a Roblox game's entire client-side hierarchy and cache it on disk. Captures: instance tree, decompiled scripts, remotes, properties, and services.
+
+The scanner injects a Lua script into the game client that walks the hierarchy, decompiles scripts (if the executor supports it), and streams the data back to the server in chunks. Results are persisted as JSON files and can be queried later without re-scanning.
+
+FRESHNESS: If a scan already exists for this PlaceId, compares the stored PlaceVersion with the current one. If versions match and force=false, returns the cached manifest without re-scanning.
+
+SCOPES: Control what gets scanned:
+- "tree" — full instance hierarchy (classes, names, paths)
+- "scripts" — all LocalScripts and ModuleScripts with decompiled source + auto-generated outlines
+- "remotes" — RemoteEvents, RemoteFunctions, BindableEvents, BindableFunctions
+- "properties" — key properties of BaseParts, Humanoids, Models, etc.
+- "services" — top-level game services with direct children summary
+
+TIMING: Scans can take 30–120 seconds depending on game size. The tool polls /scan/status until completion or timeout.`,
+    {
+      client: z.string().describe('Client identifier — use "Username(PID)" format, username, or PID. Only one client can be scanned at a time.'),
+      scopes: z.array(z.string()).optional().describe('Scopes to scan. Default: all scopes. Options: "tree", "scripts", "remotes", "properties", "services"'),
+      force: z.boolean().optional().describe('Force a fresh scan even if cached data exists and is up to date. Default: false.'),
+    },
+    async ({ client, scopes, force }) => {
+      try {
+        const allClients = await fetchClients();
+        const { pids, errors } = resolveIdentifiers([client], allClients);
+
+        if (errors.length > 0) {
+          return text(`Error resolving client:\n${errors.join("\n")}\n\nAvailable clients: ${allClients.map(c => c.label).join(", ") || "none"}`);
+        }
+
+        const pid = pids[0];
+
+        // Step 1: Get PlaceId + PlaceVersion from the client
+        const metaScript = `
+          local HttpService = game:GetService("HttpService")
+          local MarketplaceService = game:GetService("MarketplaceService")
+          local name = "Unknown"
+          pcall(function()
+            name = MarketplaceService:GetProductInfo(game.PlaceId).Name
+          end)
+          print("__SCAN_META__" .. HttpService:JSONEncode({
+            placeId = game.PlaceId,
+            placeVersion = game.PlaceVersion,
+            gameName = name,
+          }))
+        `;
+        await apiPost("/execute", { script: metaScript, pids: [pid] });
+
+        // Wait briefly for the print to arrive in logs
+        await new Promise(r => setTimeout(r, 1500));
+
+        // Read the metadata from logs
+        const logs = await apiGet("/logs", { search: "__SCAN_META__", limit: "1", order: "desc" });
+        let placeId: number | null = null;
+        let placeVersion: number | null = null;
+
+        if (logs?.logs?.length > 0) {
+          const msg = logs.logs[0].message;
+          const jsonStart = msg.indexOf("{");
+          if (jsonStart >= 0) {
+            try {
+              const meta = JSON.parse(msg.slice(jsonStart));
+              placeId = meta.placeId;
+              placeVersion = meta.placeVersion;
+            } catch { /* parse failed */ }
+          }
+        }
+
+        // Step 2: check if cached data is fresh
+        if (placeId && !force) {
+          try {
+            const cached = await apiGet(`/games/${placeId}`);
+            if (cached?.ok && cached.manifest) {
+              const storedVersion = cached.manifest.place_version;
+              if (storedVersion === placeVersion) {
+                return text(JSON.stringify({
+                  ok: true,
+                  status: "cached",
+                  message: `Game data is up to date (PlaceVersion ${placeVersion}). Use get_game_tree, get_game_scripts, etc. to query it.`,
+                  manifest: cached.manifest,
+                }, null, 2));
+              }
+            }
+          } catch { /* no cached data */ }
+        }
+
+        // Step 3: inject the scanner
+        const scopeList = scopes || ["services", "tree", "scripts", "remotes", "properties"];
+        const scopeJson = JSON.stringify(scopeList);
+
+        // Fetch the scanner template from the server (template vars get filled in server-side)
+        const scriptResp = await fetch(
+          `http://localhost:${process.env.XENO_MCP_PORT || 3111}/scanner-script?scopes=${encodeURIComponent(scopeJson)}`
+        );
+        const scannerScript = await scriptResp.text();
+
+        const execResult = await apiPost("/execute", { script: scannerScript, pids: [pid] });
+        if (!execResult.ok) return text(formatError(execResult));
+
+        // Step 4: poll scan status until complete or timeout
+        const timeoutMs = 180_000; // 3 minutes
+        const pollInterval = 3000;
+        const start = Date.now();
+
+        while (Date.now() - start < timeoutMs) {
+          await new Promise(r => setTimeout(r, pollInterval));
+
+          const status = await apiGet("/scan/status");
+          if (!status?.ok) continue;
+
+          const activeScan = status.scans?.find((s: any) => s.place_id === placeId);
+          if (!activeScan) {
+            // Scan finished (removed from active) — check for manifest
+            if (placeId) {
+              const result = await apiGet(`/games/${placeId}`);
+              if (result?.ok && result.manifest) {
+                return text(JSON.stringify({
+                  ok: true,
+                  status: "complete",
+                  message: `Scan complete! ${result.manifest.instance_count} instances, ${result.manifest.script_count} scripts, ${result.manifest.remote_count} remotes scanned in ${result.manifest.scan_duration_secs.toFixed(1)}s.`,
+                  manifest: result.manifest,
+                }, null, 2));
+              }
+            }
+            // No manifest yet but scan gone — might have failed
+            break;
+          }
+        }
+
+        // Timeout or scan disappeared without manifest
+        if (placeId) {
+          const finalCheck = await apiGet(`/games/${placeId}`);
+          if (finalCheck?.ok && finalCheck.manifest) {
+            return text(JSON.stringify({
+              ok: true,
+              status: "complete",
+              manifest: finalCheck.manifest,
+            }, null, 2));
+          }
+        }
+
+        return text(JSON.stringify({
+          ok: false,
+          error: "Scan timed out or failed. The scanner may still be running in-game. Check scan status with get_scan_status.",
+        }, null, 2));
+      } catch (e: any) {
+        return text(formatCatchError(e));
+      }
+    }
+  );
+
+  server.tool(
+    "get_scan_status",
+    `Check the status of any active game scans. Returns which scans are currently in progress, what chunk type they're receiving, and when they started.`,
+    {},
+    async () => {
+      try {
+        const data = await apiGet("/scan/status");
+        if (!data?.ok) return text(formatError(data));
+        return text(JSON.stringify(data, null, 2));
+      } catch (e: any) {
+        return text(formatCatchError(e));
+      }
+    }
+  );
+
+  server.tool(
+    "list_scanned_games",
+    `List all games that have been scanned and stored on disk. Returns an array of manifests with PlaceId, game name, PlaceVersion, scan date, instance/script/remote counts, and tree hash.
+
+Use this to see what game data is available before querying specific scopes.`,
+    {},
+    async () => {
+      try {
+        const data = await apiGet("/games");
+        if (!data?.ok) return text(formatError(data));
+
+        if (!data.games || data.games.length === 0) {
+          return text("No games have been scanned yet. Use scan_game to scan a game first.");
+        }
+
+        return text(JSON.stringify(data, null, 2));
+      } catch (e: any) {
+        return text(formatCatchError(e));
+      }
+    }
+  );
+
+  server.tool(
+    "get_game_info",
+    `Get the scan manifest for a specific game by PlaceId. Returns metadata: PlaceVersion, game name, scan date, instance/script/remote counts, tree hash, scanned scopes, and whether the executor supported decompilation.`,
+    {
+      placeId: z.number().describe("The Roblox PlaceId of the game."),
+    },
+    async ({ placeId }) => {
+      try {
+        const data = await apiGet(`/games/${placeId}`);
+        if (!data?.ok) return text(formatError(data));
+        return text(JSON.stringify(data, null, 2));
+      } catch (e: any) {
+        return text(formatCatchError(e));
+      }
+    }
+  );
+
+  server.tool(
+    "get_game_tree",
+    `Get the instance tree for a scanned game. Returns the full hierarchy of Instances with name, class name, path, and children.
+
+FILTERING: Use path, className, or search to narrow results. Use maxDepth to limit tree depth.
+- path: filter by path prefix (e.g. "Workspace.Map")
+- className: filter by exact class name (e.g. "Part", "Model")
+- search: substring match on name or path
+- maxDepth: limit how many levels deep to return children`,
+    {
+      placeId: z.number().describe("The Roblox PlaceId."),
+      path: z.string().optional().describe("Filter by path prefix (e.g. 'Workspace.Map')"),
+      className: z.string().optional().describe("Filter by exact ClassName"),
+      search: z.string().optional().describe("Search by name or path substring"),
+      maxDepth: z.number().optional().describe("Maximum tree depth to return"),
+    },
+    async ({ placeId, path, className, search, maxDepth }) => {
+      try {
+        const params: Record<string, string> = {};
+        if (path) params.path = path;
+        if (className) params.class = className;
+        if (search) params.search = search;
+        if (maxDepth !== undefined) params.max_depth = String(maxDepth);
+
+        const data = await apiGet(`/games/${placeId}/tree`, params);
+        if (!data?.ok) return text(formatError(data));
+        return text(JSON.stringify(data, null, 2));
+      } catch (e: any) {
+        return text(formatCatchError(e));
+      }
+    }
+  );
+
+  server.tool(
+    "get_game_scripts",
+    `Get scripts from a scanned game. By default returns OUTLINES only (function signatures, requires, services used, remote accesses, top-level variables, line count) — NOT full source code. This keeps responses small and avoids flooding the context window.
+
+To get full decompiled source: set includeSource=true AND provide a path filter. Never request all sources at once — filter to the specific script(s) you need.
+
+WORKFLOW:
+1. Call with no filters to see all script outlines
+2. Identify interesting scripts from their outlines
+3. Call again with includeSource=true and path="Exact.Script.Path" to read specific sources
+
+FILTERING:
+- path: filter by path prefix
+- className: "LocalScript" or "ModuleScript"
+- search: searches in script path and outline content`,
+    {
+      placeId: z.number().describe("The Roblox PlaceId."),
+      path: z.string().optional().describe("Filter by script path prefix"),
+      className: z.string().optional().describe("Filter by ClassName: 'LocalScript' or 'ModuleScript'"),
+      search: z.string().optional().describe("Search in path and outline content"),
+      includeSource: z.boolean().optional().describe("Include full decompiled source code. MUST be combined with a path filter. Default: false"),
+    },
+    async ({ placeId, path, className, search, includeSource }) => {
+      try {
+        if (includeSource && !path && !search) {
+          return text("When includeSource is true, you MUST provide a path or search filter to avoid returning all script sources at once. Filter to specific scripts first.");
+        }
+
+        const params: Record<string, string> = {};
+        if (path) params.path = path;
+        if (className) params.class = className;
+        if (search) params.search = search;
+        if (includeSource) params.include_source = "true";
+
+        const data = await apiGet(`/games/${placeId}/scripts`, params);
+        if (!data?.ok) return text(formatError(data));
+        return text(JSON.stringify(data, null, 2));
+      } catch (e: any) {
+        return text(formatCatchError(e));
+      }
+    }
+  );
+
+  server.tool(
+    "get_game_remotes",
+    `Get all remote and bindable instances from a scanned game. Returns path and class name for each.
+
+FILTERING:
+- className: filter by type (e.g. "RemoteEvent", "RemoteFunction", "BindableEvent")
+- path: filter by path prefix
+- search: substring match on path`,
+    {
+      placeId: z.number().describe("The Roblox PlaceId."),
+      path: z.string().optional().describe("Filter by path prefix"),
+      className: z.string().optional().describe("Filter by ClassName"),
+      search: z.string().optional().describe("Search by path substring"),
+    },
+    async ({ placeId, path, className, search }) => {
+      try {
+        const params: Record<string, string> = {};
+        if (path) params.path = path;
+        if (className) params.class = className;
+        if (search) params.search = search;
+
+        const data = await apiGet(`/games/${placeId}/remotes`, params);
+        if (!data?.ok) return text(formatError(data));
+        return text(JSON.stringify(data, null, 2));
+      } catch (e: any) {
+        return text(formatCatchError(e));
+      }
+    }
+  );
+
+  server.tool(
+    "get_game_properties",
+    `Get scanned instance properties from a game. Returns key properties (Position, Size, Material, etc.) for BaseParts, Models, Humanoids, Cameras, Lights, Sounds, and UI components.
+
+FILTERING:
+- path: filter by path prefix
+- className: filter by ClassName
+- search: substring match on path`,
+    {
+      placeId: z.number().describe("The Roblox PlaceId."),
+      path: z.string().optional().describe("Filter by path prefix"),
+      className: z.string().optional().describe("Filter by ClassName"),
+      search: z.string().optional().describe("Search by path substring"),
+    },
+    async ({ placeId, path, className, search }) => {
+      try {
+        const params: Record<string, string> = {};
+        if (path) params.path = path;
+        if (className) params.class = className;
+        if (search) params.search = search;
+
+        const data = await apiGet(`/games/${placeId}/properties`, params);
+        if (!data?.ok) return text(formatError(data));
+        return text(JSON.stringify(data, null, 2));
+      } catch (e: any) {
+        return text(formatCatchError(e));
+      }
+    }
+  );
+
+  server.tool(
+    "get_game_services",
+    `Get the top-level game services from a scanned game. Returns service name, class name, child count, and a summary of direct children.`,
+    {
+      placeId: z.number().describe("The Roblox PlaceId."),
+    },
+    async ({ placeId }) => {
+      try {
+        const data = await apiGet(`/games/${placeId}/services`);
+        if (!data?.ok) return text(formatError(data));
+        return text(JSON.stringify(data, null, 2));
+      } catch (e: any) {
+        return text(formatCatchError(e));
+      }
+    }
+  );
+
+  server.tool(
+    "check_game_freshness",
+    `Check whether stored game data is still up to date by comparing the cached PlaceVersion with the live one. Runs a small Lua snippet to fetch the current PlaceVersion and compares it with what's stored.
+
+Returns whether the data is fresh or stale, and both version numbers.`,
+    {
+      client: z.string().describe('Client identifier — use "Username(PID)" format, username, or PID.'),
+      placeId: z.number().describe("The PlaceId to check freshness for."),
+    },
+    async ({ client, placeId }) => {
+      try {
+        const allClients = await fetchClients();
+        const { pids, errors } = resolveIdentifiers([client], allClients);
+        if (errors.length > 0) {
+          return text(`Error resolving client:\n${errors.join("\n")}`);
+        }
+
+        // Get stored version
+        const cached = await apiGet(`/games/${placeId}`);
+        if (!cached?.ok || !cached.manifest) {
+          return text(`No stored data found for PlaceId ${placeId}. Run scan_game first.`);
+        }
+        const storedVersion = cached.manifest.place_version;
+
+        // Get current version from client
+        await apiPost("/execute", {
+          script: `print("__VERSION_CHECK__" .. game.PlaceVersion)`,
+          pids: [pids[0]],
+        });
+        await new Promise(r => setTimeout(r, 1000));
+        const logs = await apiGet("/logs", { search: "__VERSION_CHECK__", limit: "1", order: "desc" });
+
+        let currentVersion: number | null = null;
+        if (logs?.logs?.length > 0) {
+          const match = logs.logs[0].message.match(/__VERSION_CHECK__(\d+)/);
+          if (match) currentVersion = parseInt(match[1], 10);
+        }
+
+        if (currentVersion === null) {
+          return text("Could not retrieve current PlaceVersion from client. Make sure the logger is attached and the player is in-game.");
+        }
+
+        const fresh = currentVersion === storedVersion;
+        return text(JSON.stringify({
+          ok: true,
+          fresh,
+          stored_version: storedVersion,
+          current_version: currentVersion,
+          message: fresh
+            ? "Game data is up to date."
+            : `Game data is stale. Stored: v${storedVersion}, Current: v${currentVersion}. Run scan_game with force=true to update.`,
+        }, null, 2));
+      } catch (e: any) {
+        return text(formatCatchError(e));
+      }
+    }
+  );
+
+  server.tool(
+    "delete_game_data",
+    `Delete all stored scan data for a game. This removes the manifest, tree, scripts, remotes, properties, and services files from disk. Irreversible.`,
+    {
+      placeId: z.number().describe("The PlaceId of the game to delete data for."),
+    },
+    async ({ placeId }) => {
+      try {
+        const data = await apiDelete(`/games/${placeId}`);
+        if (!data?.ok) return text(formatError(data));
+        return text(JSON.stringify(data, null, 2));
+      } catch (e: any) {
+        return text(formatCatchError(e));
+      }
+    }
+  );
 }

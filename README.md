@@ -26,6 +26,7 @@ Supports two modes:
 - [MCP Configuration](#mcp-configuration)
 - [Tools](#tools)
 - [Remote Spy](#remote-spy)
+- [Game Scanner](#game-scanner)
 - [Logs & Pagination](#logs--pagination)
 - [HTTP API](#http-api)
 - [Server Flags](#server-flags)
@@ -276,6 +277,24 @@ The agent enforces safety rules: unverified scripts require explicit user confir
 
 See [Remote Spy](#remote-spy) for details.
 
+### Game Scanner Tools
+
+| Tool | Description |
+|------|-------------|
+| `scan_game` | Scan a game's client-side hierarchy (tree, scripts, remotes, properties, services) and cache to disk |
+| `get_scan_status` | Check active scan progress |
+| `list_scanned_games` | List all games with stored scan data |
+| `get_game_info` | Get the scan manifest for a specific game |
+| `get_game_tree` | Query the instance hierarchy with optional filters (path, class, search, depth) |
+| `get_game_scripts` | Get script outlines (default) or full decompiled source (with path filter) |
+| `get_game_remotes` | Get all remote/bindable instances |
+| `get_game_properties` | Get scanned instance properties |
+| `get_game_services` | Get top-level game services with child summaries |
+| `check_game_freshness` | Compare stored PlaceVersion with live version |
+| `delete_game_data` | Delete stored scan data for a game |
+
+See [Game Scanner](#game-scanner) for details.
+
 ---
 
 ## Remote Spy
@@ -325,6 +344,57 @@ get_logs(source="remote_spy", search="SetAFK") — specific remote
 - `detach_spy` sends a disconnect script that restores all hooks and clears listeners
 - The spy auto-cleans up when the player leaves the game
 - The spy guards against double-injection: re-attaching disconnects the previous spy first
+
+---
+
+## Game Scanner
+
+The game scanner captures a complete snapshot of a game's client-side hierarchy and stores it as JSON files on disk. Once scanned, the AI agent can query cached game data across sessions without re-scanning.
+
+### What Gets Scanned
+
+| Scope | Description | File |
+|-------|-------------|------|
+| `services` | Top-level game services with direct children summary | `services.json` |
+| `tree` | Full instance hierarchy (name, class, path, children) | `tree.json` |
+| `scripts` | All LocalScripts and ModuleScripts with decompiled source | `scripts.json` (outlines), `scripts_full.json` (source) |
+| `remotes` | RemoteEvents, RemoteFunctions, BindableEvents, BindableFunctions | `remotes.json` |
+| `properties` | Key properties of BaseParts, Models, Humanoids, Cameras, etc. | `properties.json` |
+
+All data is stored under `storage/places/{placeId}/` with a `manifest.json` containing scan metadata.
+
+### Outline-First Approach
+
+Decompiled script sources can be very large. To avoid flooding the AI's context window:
+
+- `get_game_scripts` returns **outlines** by default — function signatures, `require()` paths, `GetService()` calls, remote access patterns, and top-level variables
+- Full source is only returned when `includeSource=true` is passed **with a path filter**
+- The agent discovers scripts via outlines, then reads specific sources as needed
+
+### Change Detection
+
+Each scan stores:
+- **PlaceVersion** — Roblox increments this with every publish
+- **Tree hash** — SHA-256 of sorted `className:name:path` entries
+
+`scan_game` automatically compares the stored PlaceVersion with the current one and skips re-scanning if data is fresh. Use `force=true` to override.
+
+### Workflow
+
+```
+scan_game(client) → list_scanned_games → get_game_tree/scripts/remotes/properties/services
+```
+
+1. `scan_game` checks freshness, injects the scanner Lua if needed, waits for completion
+2. Query cached data with `get_game_*` tools — filtered by path, class, or search term
+3. For scripts: browse outlines first, then request specific sources with `includeSource=true`
+
+### Limitations
+
+- Only captures **client-replicated** data — server-only instances (ServerScriptService, etc.) are not visible
+- Script decompilation depends on the executor — not all executors have `decompile()`
+- Large games may take 1–2 minutes to fully scan
+- Properties are sampled for common types only
 
 ---
 
@@ -398,6 +468,15 @@ For direct integration without MCP:
 | `POST` | `/spy/subscribe` | Subscribe to a remote path: `{ "path": "..." }` |
 | `POST` | `/spy/unsubscribe` | Unsubscribe from a remote path: `{ "path": "..." }` |
 | `GET` | `/spy/status` | Spy status: active clients and subscriptions |
+| `GET` | `/scanner-script` | Get the scanner Lua script (query: `scopes`) |
+| `POST` | `/scan/data` | Receive scan data chunks from the Lua scanner |
+| `POST` | `/scan/complete` | Finalize a scan and write the manifest |
+| `GET` | `/scan/status` | Check active scan progress |
+| `POST` | `/scan/cancel` | Cancel an in-progress scan |
+| `GET` | `/games` | List all scanned games |
+| `GET` | `/games/{placeId}` | Get manifest for a specific game |
+| `GET` | `/games/{placeId}/{scope}` | Get scope data (tree/scripts/remotes/properties/services) |
+| `DELETE` | `/games/{placeId}` | Delete stored scan data |
 
 All POST/DELETE endpoints require the `X-Xeno-Secret` header when `--secret` is set.
 
@@ -416,9 +495,11 @@ Options:
       --secret <SECRET>              Require X-Xeno-Secret header on POST/DELETE
       --max-entries <N>              Max log entries in memory [default: 10000]
       --xeno-url <URL>               Xeno API URL [default: http://localhost:3110]
+      --xeno-api-min-interval-ms <MS>  Minimum spacing between Xeno API requests [default: 150]
       --mode <MODE>                  Server mode: xeno or generic [default: xeno]
       --exchange-dir <DIR>           OS path for script exchange files [default: ./exchange]
       --executor-exchange-dir <DIR>  Exchange path as seen by the executor's filesystem
+      --storage-dir <DIR>            Directory for persistent game scanner storage [default: ./storage]
 ```
 
 To run the server manually (useful for debugging):

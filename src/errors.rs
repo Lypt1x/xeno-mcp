@@ -14,7 +14,9 @@ pub async fn not_found_handler(req: HttpRequest) -> HttpResponse {
         &format!(
             "No endpoint matches {} {}. Available endpoints: GET /health, GET /clients, \
              POST /execute, POST /attach-logger, POST /internal, \
-             GET /logs, DELETE /logs",
+             GET /logs, DELETE /logs, POST /scan/data, POST /scan/complete, \
+             GET /scan/status, GET /games, GET /games/{{id}}, \
+             GET /games/{{id}}/{{scope}}, DELETE /games/{{id}}",
             req.method(),
             req.path()
         ),

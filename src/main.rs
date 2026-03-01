@@ -3,6 +3,8 @@ mod loader;
 mod logger;
 mod models;
 mod routes;
+#[allow(dead_code)]
+mod scanner;
 mod spy;
 mod xeno;
 
@@ -12,10 +14,11 @@ use clap::Parser;
 use parking_lot::RwLock;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+use std::time::Duration;
 
 use errors::*;
 use models::{AppState, Args, LogEntry, ServerMode};
-use routes::{health, internal, logs, spy as spy_routes, xeno as xeno_routes};
+use routes::{health, internal, logs, scanner as scanner_routes, spy as spy_routes, xeno as xeno_routes};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -41,6 +44,13 @@ async fn main() -> std::io::Result<()> {
         }
     }
     println!();
+    // Ensure storage directory exists
+    let storage_path = std::path::Path::new(&args.storage_dir);
+    std::fs::create_dir_all(storage_path.join("places"))
+        .expect("failed to create storage/places directory");
+    println!("  storage: {}", args.storage_dir);
+
+    println!();
     println!("  GET  /health         POST /internal");
     println!("  GET  /clients        POST /execute");
     println!("  POST /attach-logger  GET  /loader-script");
@@ -48,7 +58,16 @@ async fn main() -> std::io::Result<()> {
     println!("  POST /spy/attach     POST /spy/detach");
     println!("  POST /spy/subscribe  POST /spy/unsubscribe");
     println!("  GET  /spy/status");
+    println!("  POST /scan/data      POST /scan/complete");
+    println!("  GET  /scan/status    POST /scan/cancel");
+    println!("  GET  /games          GET  /games/{{id}}");
+    println!("  GET  /games/{{id}}/{{scope}}  DEL  /games/{{id}}");
     println!();
+
+    let http_client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(5))
+        .build()
+        .expect("failed to build HTTP client");
 
     let state = Arc::new(AppState {
         logs: RwLock::new(Vec::with_capacity(args.max_entries)),
@@ -56,7 +75,8 @@ async fn main() -> std::io::Result<()> {
         generic_clients: RwLock::new(HashMap::new()),
         spy_clients: RwLock::new(HashSet::new()),
         spy_subscriptions: RwLock::new(HashMap::new()),
-        http_client: reqwest::Client::new(),
+        active_scans: RwLock::new(HashMap::new()),
+        http_client,
         args: args.clone(),
     });
 
@@ -99,7 +119,7 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         let json_cfg = JsonConfig::default()
-            .limit(1024 * 1024)
+            .limit(16 * 1024 * 1024) // 16 MB — scan chunks can be large
             .error_handler(|err, req| {
                 let detail = err.to_string();
                 let (status, msg) = if detail.contains("Content type error") {
@@ -113,7 +133,7 @@ async fn main() -> std::io::Result<()> {
                 } else if detail.contains("Payload reached size limit") {
                     (
                         actix_web::http::StatusCode::PAYLOAD_TOO_LARGE,
-                        "Request body exceeds the 1 MB limit".to_string(),
+                        "Request body exceeds the 16 MB limit".to_string(),
                     )
                 } else {
                     (
@@ -191,6 +211,39 @@ async fn main() -> std::io::Result<()> {
             .service(
                 web::resource("/spy/status")
                     .route(web::get().to(spy_routes::get_spy_status))
+            )
+            .service(
+                web::resource("/scan/data")
+                    .route(web::post().to(scanner_routes::post_scan_data))
+            )
+            .service(
+                web::resource("/scan/complete")
+                    .route(web::post().to(scanner_routes::post_scan_complete))
+            )
+            .service(
+                web::resource("/scan/status")
+                    .route(web::get().to(scanner_routes::get_scan_status))
+            )
+            .service(
+                web::resource("/scan/cancel")
+                    .route(web::post().to(scanner_routes::post_scan_cancel))
+            )
+            .service(
+                web::resource("/scanner-script")
+                    .route(web::get().to(scanner_routes::get_scanner_script))
+            )
+            .service(
+                web::resource("/games")
+                    .route(web::get().to(scanner_routes::get_games))
+            )
+            .service(
+                web::resource("/games/{placeId}")
+                    .route(web::get().to(scanner_routes::get_game))
+                    .route(web::delete().to(scanner_routes::delete_game))
+            )
+            .service(
+                web::resource("/games/{placeId}/{scope}")
+                    .route(web::get().to(scanner_routes::get_game_scope))
             )
             .default_service(web::to(not_found_handler))
     })

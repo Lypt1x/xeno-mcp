@@ -1,8 +1,9 @@
-use chrono::{DateTime, Local};
+use chrono::{DateTime, Local, Utc};
 use clap::{Parser, ValueEnum};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
+
 
 #[derive(Debug, Clone, ValueEnum)]
 pub enum ServerMode {
@@ -54,6 +55,10 @@ pub struct Args {
     /// If not set, defaults to the same value as --exchange-dir.
     #[arg(long)]
     pub executor_exchange_dir: Option<String>,
+
+    /// Directory for persistent game scanner storage
+    #[arg(long, default_value = "./storage")]
+    pub storage_dir: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -125,12 +130,21 @@ pub struct GenericClient {
     pub connected: bool,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct ScanStatus {
+    pub place_id: u64,
+    pub status: String,
+    pub progress: String,
+    pub started_at: DateTime<Utc>,
+}
+
 pub struct AppState {
     pub logs: RwLock<Vec<LogEntry>>,
     pub logger_pids: RwLock<HashSet<String>>,
     pub generic_clients: RwLock<HashMap<String, GenericClient>>,
     pub spy_clients: RwLock<HashSet<String>>,
     pub spy_subscriptions: RwLock<HashMap<String, HashSet<String>>>,
+    pub active_scans: RwLock<HashMap<u64, ScanStatus>>,
     pub http_client: reqwest::Client,
     pub args: Args,
 }

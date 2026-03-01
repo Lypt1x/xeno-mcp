@@ -171,4 +171,48 @@ GENERIC MODE KEY DIFFERENCES:
 - After execution in generic mode, script output is automatically polled and returned inline
 - Required UNC functions in the executor: readfile, listfiles, isfile, delfile, request, getgenv
 - Stale clients are automatically cleaned up after 15s without a heartbeat
+
+GAME SCANNER — PERSISTENT GAME KNOWLEDGE:
+- The scanner lets you capture a complete snapshot of a game's client-side hierarchy and cache it on disk
+- Scanned data persists across sessions — you can query cached results without re-scanning
+- Use scan_game to trigger a scan, then query results with the get_game_* tools
+- Scans are chunked by service/batch to handle large games without payload issues
+
+SCANNER WORKFLOW:
+1. Call scan_game with a connected client — it automatically checks freshness (PlaceVersion) and skips re-scanning if data is current
+2. Use list_scanned_games to see what game data is available
+3. Query specific data:
+   - get_game_tree — instance hierarchy (name, class, path, children)
+   - get_game_scripts — script outlines (functions, requires, services, remote usage) — NO full source by default
+   - get_game_remotes — RemoteEvents, RemoteFunctions, and bindables
+   - get_game_properties — key properties (Position, Size, Material, etc.) of parts, humanoids, models
+   - get_game_services — top-level services with child summaries
+
+SCRIPT OUTLINE APPROACH — CRITICAL:
+- get_game_scripts returns OUTLINES by default, not full decompiled source code
+- Outlines include: function signatures, require() paths, GetService() calls, remote access patterns, top-level variables, and line count
+- This keeps responses small and avoids flooding the context window with thousands of lines of decompiled code
+- To read full source: call get_game_scripts with includeSource=true AND a specific path filter
+- NEVER request all sources at once — always filter to specific scripts you're interested in
+- Typical workflow: browse outlines → identify interesting scripts → request their full source one at a time
+
+SCANNER SCOPES:
+- "tree" — full instance hierarchy
+- "scripts" — LocalScripts and ModuleScripts with decompiled source + auto-generated outlines
+- "remotes" — RemoteEvent, RemoteFunction, BindableEvent, BindableFunction, UnreliableRemoteEvent
+- "properties" — key properties from BaseParts, Models, Humanoids, Cameras, Lights, Sounds, UI components
+- "services" — top-level game services with direct children summaries
+
+CHANGE DETECTION:
+- Each scan stores the PlaceVersion and a structural tree hash (SHA-256 of sorted className:name:path entries)
+- scan_game automatically compares the stored PlaceVersion with the live one and skips re-scanning if they match
+- Use check_game_freshness for a lightweight version check without triggering a full scan
+- Use force=true with scan_game to bypass freshness checks and re-scan unconditionally
+
+SCANNER LIMITATIONS:
+- Only captures client-replicated data (Workspace, ReplicatedStorage, etc.) — server-only instances are not visible
+- Decompilation depends on the executor: not all executors have a decompile() function
+- Large games may take 1-2 minutes to fully scan
+- Properties are sampled for common types only (BasePart, Model, Humanoid, Camera, Light, Sound, UI)
 `;
+

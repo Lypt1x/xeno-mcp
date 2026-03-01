@@ -60,4 +60,33 @@ export function registerResources(server: McpServer) {
       }
     }
   );
+
+  server.resource(
+    "games",
+    "xeno://games",
+    {
+      description: "List of all scanned games with their manifests (PlaceId, game name, version, scan date, instance/script/remote counts). Use game scanner tools for detailed queries.",
+      mimeType: "application/json",
+    },
+    async (uri) => {
+      try {
+        const data = await apiGet("/games");
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: "application/json",
+            text: JSON.stringify(data, null, 2),
+          }],
+        };
+      } catch (e: any) {
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: "application/json",
+            text: JSON.stringify({ error: `Failed to reach xeno-mcp server: ${e.message}` }),
+          }],
+        };
+      }
+    }
+  );
 }
