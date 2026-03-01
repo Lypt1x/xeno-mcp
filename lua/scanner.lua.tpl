@@ -85,6 +85,17 @@ local scannableServices = {
     "Lighting", "SoundService", "Chat", "Teams"
 }
 
+-- LocalPlayer containers worth scanning (PlayerGui has runtime GUIs, scripts, etc.)
+local playerContainers = {}
+pcall(function()
+    local lp = game:GetService("Players").LocalPlayer
+    if lp then
+        for _, child in ipairs(lp:GetChildren()) do
+            table.insert(playerContainers, child)
+        end
+    end
+end)
+
 local instanceCount = 0
 local scriptCount = 0
 local remoteCount = 0
@@ -163,6 +174,20 @@ if hasScope("tree") then
         end)
         task.wait(0.1) -- yield between services
     end
+
+    -- LocalPlayer children (PlayerGui, PlayerScripts, Backpack, etc.)
+    for _, container in ipairs(playerContainers) do
+        pcall(function()
+            local tree = buildTree(container)
+            post("/scan/data", {
+                place_id = placeId,
+                chunk_type = "tree",
+                service_name = "LocalPlayer." .. container.Name,
+                data = { tree }
+            })
+        end)
+        task.wait(0.1)
+    end
 end
 
 -- phase: scripts (batched)
@@ -184,53 +209,55 @@ if hasScope("scripts") then
             end
         end
 
-        for _, serviceName in ipairs(scannableServices) do
-            local svc = getService(serviceName)
-            if svc then
-                for _, inst in ipairs(svc:GetDescendants()) do
-                    if inst:IsA("LocalScript") or inst:IsA("ModuleScript") or inst:IsA("Script") then
-                        local entry = {
-                            path = inst:GetFullName(),
-                            class_name = inst.ClassName,
-                            decompiled = false,
-                            source = ""
-                        }
+        local function scanDescendants(root)
+            for _, inst in ipairs(root:GetDescendants()) do
+                if inst:IsA("LocalScript") or inst:IsA("ModuleScript") or inst:IsA("Script") then
+                    local entry = {
+                        path = inst:GetFullName(),
+                        class_name = inst.ClassName,
+                        decompiled = false,
+                        source = ""
+                    }
 
-                        -- try to get Enabled property (only on LocalScript)
+                    pcall(function()
+                        if inst:IsA("LocalScript") then
+                            entry.enabled = not inst.Disabled
+                        end
+                    end)
+
+                    if hasDecompile then
+                        local ok, src = pcall(decompile, inst)
+                        if ok and type(src) == "string" then
+                            entry.source = src
+                            entry.decompiled = true
+                        end
+                    end
+
+                    if entry.source == "" then
                         pcall(function()
-                            if inst:IsA("LocalScript") then
-                                entry.enabled = not inst.Disabled
+                            local src = inst.Source
+                            if src and #src > 0 then
+                                entry.source = src
                             end
                         end)
+                    end
 
-                        -- try to decompile
-                        if hasDecompile then
-                            local ok, src = pcall(decompile, inst)
-                            if ok and type(src) == "string" then
-                                entry.source = src
-                                entry.decompiled = true
-                            end
-                        end
+                    table.insert(batch, entry)
+                    scriptCount = scriptCount + 1
 
-                        -- fallback: try to read Source (usually empty in published games)
-                        if entry.source == "" then
-                            pcall(function()
-                                local src = inst.Source
-                                if src and #src > 0 then
-                                    entry.source = src
-                                end
-                            end)
-                        end
-
-                        table.insert(batch, entry)
-                        scriptCount = scriptCount + 1
-
-                        if #batch >= batchSize then
-                            flushBatch()
-                        end
+                    if #batch >= batchSize then
+                        flushBatch()
                     end
                 end
             end
+        end
+
+        for _, serviceName in ipairs(scannableServices) do
+            local svc = getService(serviceName)
+            if svc then scanDescendants(svc) end
+        end
+        for _, container in ipairs(playerContainers) do
+            pcall(scanDescendants, container)
         end
         flushBatch()
     end)
@@ -262,6 +289,23 @@ if hasScope("remotes") then
                     end
                 end
             end
+        end
+
+        for _, container in ipairs(playerContainers) do
+            pcall(function()
+                for _, inst in ipairs(container:GetDescendants()) do
+                    for _, cls in ipairs(remoteClasses) do
+                        if inst:IsA(cls) then
+                            table.insert(remotes, {
+                                path = inst:GetFullName(),
+                                class_name = inst.ClassName
+                            })
+                            remoteCount = remoteCount + 1
+                            break
+                        end
+                    end
+                end
+            end)
         end
 
         post("/scan/data", {
@@ -322,6 +366,41 @@ if hasScope("properties") then
             end
         end)
         task.wait(0.1)
+    end
+
+    -- LocalPlayer containers
+    for _, container in ipairs(playerContainers) do
+        pcall(function()
+            local batch = {}
+            for _, inst in ipairs(container:GetDescendants()) do
+                for baseClass, props in pairs(propDefs) do
+                    if inst:IsA(baseClass) then
+                        local propValues = {}
+                        for _, prop in ipairs(props) do
+                            pcall(function()
+                                propValues[prop] = tostring(inst[prop])
+                            end)
+                        end
+                        if next(propValues) then
+                            table.insert(batch, {
+                                path = inst:GetFullName(),
+                                class_name = inst.ClassName,
+                                properties = propValues
+                            })
+                        end
+                        break
+                    end
+                end
+            end
+            if #batch > 0 then
+                post("/scan/data", {
+                    place_id = placeId,
+                    chunk_type = "properties",
+                    service_name = "LocalPlayer." .. container.Name,
+                    data = batch
+                })
+            end
+        end)
     end
 end
 
