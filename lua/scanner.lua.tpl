@@ -5,7 +5,7 @@ local localPlayer = Players.LocalPlayer
 
 local BASE_URL = "{{BASE_URL}}"
 local SECRET   = "{{SECRET}}"
-local SCOPES   = HttpService:JSONDecode("{{SCOPES}}")
+local SCOPES   = HttpService:JSONDecode('{{SCOPES}}')
 local USERNAME = localPlayer.Name
 
 local function makeHeaders()
