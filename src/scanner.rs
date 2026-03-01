@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -42,6 +42,8 @@ pub struct ScriptOutline {
     pub requires: Vec<String>,
     pub services: Vec<String>,
     pub remote_accesses: Vec<String>,
+    pub instance_refs: Vec<String>,
+    pub string_constants: Vec<String>,
     pub top_level_vars: Vec<String>,
     pub line_count: u64,
 }
@@ -298,6 +300,8 @@ pub fn generate_outline(source: &str) -> ScriptOutline {
     let require_re = Regex::new(r#"require\(([^)]+)\)"#).unwrap();
     let service_re = Regex::new(r#"game:GetService\(\s*["']([^"']+)["']\s*\)"#).unwrap();
     let remote_re = Regex::new(r#"[:.](FireServer|InvokeServer|OnClientEvent|OnServerEvent|FireClient|OnClientInvoke)\s*\("#).unwrap();
+    let instance_ref_re = Regex::new(r#"(?:FindFirstChild|WaitForChild|FindFirstChildOfClass|FindFirstChildWhichIsA)\(\s*["']([^"']+)["']"#).unwrap();
+    let string_re = Regex::new(r#"["']([^"']{2,60})["']"#).unwrap();
     let var_re = Regex::new(r"(?m)^local\s+(\w+)\s*=").unwrap();
 
     let mut functions = Vec::new();
@@ -344,6 +348,34 @@ pub fn generate_outline(source: &str) -> ScriptOutline {
         }
     }
 
+    let mut instance_refs: Vec<String> = Vec::new();
+    for cap in instance_ref_re.captures_iter(source) {
+        let name = cap.get(1).map_or("", |m| m.as_str()).to_string();
+        if !instance_refs.contains(&name) {
+            instance_refs.push(name);
+        }
+    }
+
+    // collect string constants, skip common noise
+    let mut string_constants: Vec<String> = Vec::new();
+    let noise: HashSet<&str> = [
+        "Frame", "TextLabel", "TextButton", "ImageLabel", "ImageButton",
+        "ScreenGui", "ScrollingFrame", "UIListLayout", "UICorner",
+        "UIPadding", "UIStroke", "UIGridLayout", "UIAspectRatioConstraint",
+        "Color3", "Vector3", "CFrame", "UDim2", "UDim",
+        "rbxassetid://", "Content-Type", "application/json",
+    ].iter().copied().collect();
+    for cap in string_re.captures_iter(source) {
+        let val = cap.get(1).map_or("", |m| m.as_str()).to_string();
+        if !noise.contains(val.as_str())
+            && !services.contains(&val)
+            && !string_constants.contains(&val)
+            && string_constants.len() < 50
+        {
+            string_constants.push(val);
+        }
+    }
+
     let mut top_level_vars: Vec<String> = Vec::new();
     for cap in var_re.captures_iter(source) {
         let var = cap.get(1).map_or("", |m| m.as_str()).to_string();
@@ -360,6 +392,8 @@ pub fn generate_outline(source: &str) -> ScriptOutline {
         requires,
         services,
         remote_accesses,
+        instance_refs,
+        string_constants,
         top_level_vars,
         line_count,
     }
@@ -594,6 +628,9 @@ function ShopHandler.PurchaseItem(itemId, quantity)
     ReplicatedStorage.Remotes.PurchaseItem:FireServer(itemId, quantity)
 end
 
+local remote = ReplicatedStorage:FindFirstChild("01_server")
+local gui = Players.LocalPlayer.PlayerGui:WaitForChild("MainGui")
+
 return ShopHandler
 "#;
         let outline = generate_outline(source);
@@ -607,6 +644,12 @@ return ShopHandler
         assert!(outline.remote_accesses.len() >= 1);
         assert!(outline.top_level_vars.contains(&"ShopHandler".to_string()));
         assert!(outline.top_level_vars.contains(&"MAX_ITEMS".to_string()));
+        // instance_refs
+        assert!(outline.instance_refs.contains(&"01_server".to_string()));
+        assert!(outline.instance_refs.contains(&"MainGui".to_string()));
+        // string_constants should include notable strings but not services
+        assert!(outline.string_constants.contains(&"init".to_string()));
+        assert!(!outline.string_constants.contains(&"ReplicatedStorage".to_string()));
     }
 
     #[test]

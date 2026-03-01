@@ -183,15 +183,15 @@ SCANNER WORKFLOW:
 2. Use list_scanned_games to see what game data is available
 3. Query specific data:
    - get_game_tree — instance hierarchy (name, class, path, children)
-   - get_game_scripts — script outlines (functions, requires, services, remote usage) — NO full source by default
+   - get_game_scripts — script outlines (functions, requires, services, remote usage, instance refs, string constants) — NO full source by default
    - get_game_remotes — RemoteEvents, RemoteFunctions, and bindables
    - get_game_properties — key properties (Position, Size, Material, etc.) of parts, humanoids, models
    - get_game_services — top-level services with child summaries
 
 SCRIPT OUTLINE APPROACH — CRITICAL:
 - get_game_scripts returns OUTLINES by default, not full decompiled source code
-- Outlines include: function signatures, require() paths, GetService() calls, remote access patterns, top-level variables, and line count
-- This keeps responses small and avoids flooding the context window with thousands of lines of decompiled code
+- Outlines include: function signatures, require() paths, GetService() calls, remote access patterns, instance refs (FindFirstChild/WaitForChild targets), string constants, top-level variables, and line count
+- Use the "search" parameter on get_game_scripts to search across outlines — this matches against string constants and instance refs too, letting you find scripts that reference a specific remote, GUI, or named instance without reading full source
 - To read full source: call get_game_scripts with includeSource=true AND a specific path filter
 - NEVER request all sources at once — always filter to specific scripts you're interested in
 - Typical workflow: browse outlines → identify interesting scripts → request their full source one at a time
